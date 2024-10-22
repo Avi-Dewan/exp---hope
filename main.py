@@ -153,7 +153,7 @@ print('Finished Training GAN')
 print('\n')
 G.eval()
 print('Generating sample image\n')
-fixed_Gz = G(fixed_z, fixed_y)
+fixed_Gz = G(fixed_z, G.share(fixed_y))
 print(fixed_Gz.shape)
 image_filename = '%s/fixed_sample.jpg' % (args.img_training_path)
 
