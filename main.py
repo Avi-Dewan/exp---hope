@@ -160,7 +160,7 @@ image_filename = '%s/fixed_sample.jpg' % (args.img_training_path)
 print(fixed_Gz)
 print(fixed_Gz.float())
 
-torchvision.utils.save_image(fixed_Gz.float().cpu(), image_filename,
+torchvision.utils.save_image(torch.tensor(fixed_Gz.float().cpu()), image_filename,
                              nrow=int(fixed_Gz.shape[0] **0.5), normalize=True)
 # --------------------
 #     Final Model
