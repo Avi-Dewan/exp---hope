@@ -151,12 +151,15 @@ for epoch in range(args.n_epochs_gan_pretraining):
 
 print('Finished Training GAN')
 print('\n')
-
+G.eval()
 print('Generating sample image\n')
 fixed_Gz = G(fixed_z, fixed_y)
 print(fixed_Gz.shape)
 image_filename = '%s/fixed_sample.jpg' % (args.img_training_path)
-                                           
+
+print(fixed_Gz)
+print(fixed_Gz.float())
+
 torchvision.utils.save_image(fixed_Gz.float().cpu(), image_filename,
                              nrow=int(fixed_Gz.shape[0] **0.5), normalize=True)
 # --------------------
