@@ -155,7 +155,7 @@ print('\n')
 print('Generating sample image\n')
 fixed_Gz = G(fixed_z, fixed_y)
 print(fixed_Gz.shape)
-image_filename = '%s/fixed_sample.jpg' % (args.img_pretraining_path)
+image_filename = '%s/fixed_sample.jpg' % (args.img_training_path)
                                            
 torchvision.utils.save_image(fixed_Gz.float().cpu(), image_filename,
                              nrow=int(fixed_Gz.shape[0] **0.5), normalize=True)
