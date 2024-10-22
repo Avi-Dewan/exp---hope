@@ -28,7 +28,7 @@ def test(model, test_loader, args, tsne=False):
     model.eval()
     preds=np.array([])
     targets=np.array([])
-    feats = np.zeros((len(test_loader.dataset), args.n_clusters))
+    feats = np.zeros((len(test_loader.dataset), args.n_classes))
     device = next(model.parameters()).device
     for batch_idx, (x, label, idx) in enumerate(tqdm(test_loader)):
         x, label = x.to(device), label.to(device)
