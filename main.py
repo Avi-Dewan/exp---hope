@@ -153,14 +153,14 @@ print('Finished Training GAN')
 print('\n')
 G.eval()
 print('Generating sample image\n')
-fixed_Gz = G(fixed_z, G.share(fixed_y))
+fixed_Gz = G(fixed_z, G.shared(fixed_y))
 print(fixed_Gz.shape)
 image_filename = '%s/fixed_sample.jpg' % (args.img_training_path)
 
 print(fixed_Gz)
 print(fixed_Gz.float())
 
-torchvision.utils.save_image(torch.tensor(fixed_Gz.float().cpu()), image_filename,
+torchvision.utils.save_image(fixed_Gz.float().cpu(), image_filename,
                              nrow=int(fixed_Gz.shape[0] **0.5), normalize=True)
 # --------------------
 #     Final Model
