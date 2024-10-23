@@ -23,7 +23,7 @@ from utils.util import cluster_acc
 from torch.nn import Parameter
 
 
-
+@torch.no_grad()
 def test(model, test_loader, args, tsne=False):
     model.eval()
     preds=np.array([])
@@ -59,7 +59,7 @@ parser.add_argument('--verbose', type=str, default=False, help='Verbose mode')
 parser.add_argument('--device', type=str, default='cpu', choices=['cuda', 'cpu'])
 
 # Number of classes
-parser.add_argument('--n_classes', type=int, default=5)
+parser.add_argument('--n_classes', type=int, default=10)
 
 # Classifier pretraining parameters
 parser.add_argument('--n_epochs_cls_pretraining', type=int, default=1)
@@ -106,8 +106,8 @@ G_batch_size = batch_size # max ( args.G_batch_size , batch_size)
 # --------------------
 #   Data loading
 # --------------------
-train_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split='train', aug='twice', shuffle=True, target_list=range(5, 10))
-eval_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split='train', aug=None, shuffle=False, target_list=range(5, 10))
+train_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split='train', aug='twice', shuffle=True, target_list=range(0, 10))
+eval_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split='train', aug=None, shuffle=False, target_list=range(0, 10))
 # --------------------
 
 # Classifier pretraining 
@@ -138,9 +138,11 @@ fixed_y.sample_()
 
 train = train_fns.GAN_training_function(G, D, GD, z_, y_, batch_size, num_D_steps, num_D_accumulations=1, num_G_accumulations=1)
 
-for epoch in range(args.n_epochs_gan_pretraining):
-    for i, ((images, _),  targets, _) in enumerate(tqdm(train_loader)):
+DEBUG = True
 
+for epoch in range(args.n_epochs_gan_pretraining):
+    if DEBUG: break
+    for i, ((images, _),  targets, _) in enumerate(tqdm(train_loader)):
         x = images.to(args.device)
         y = (targets - 5).to(args.device)
 
@@ -153,7 +155,8 @@ print('Finished Training GAN')
 print('\n')
 G.eval()
 print('Generating sample image\n')
-fixed_Gz = G(fixed_z, G.shared(fixed_y))
+with torch.no_grad():
+    fixed_Gz = G(fixed_z, G.shared(fixed_y))
 print(fixed_Gz.shape)
 image_filename = '%s/fixed_sample.jpg' % (args.img_training_path)
 

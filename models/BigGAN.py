@@ -234,7 +234,6 @@ class Generator(nn.Module):
       ys = [torch.cat([y, item], 1) for item in zs[1:]]
     else:
       ys = [y] * len(self.blocks)
-      
     # First linear layer
     h = self.linear(z)
     # Reshape
