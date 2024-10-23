@@ -142,6 +142,12 @@ fixed_z, fixed_y = gan_utils.prepare_z_y(G_batch_size=G_batch_size, dim_z = args
 fixed_z.sample_()
 fixed_y.sample_()
 
+# Create a tensor where each class (0 to 4) appears 10 times, repeated serially
+fixed_y = torch.tensor([i for i in range(args.n_classes) for _ in range(G_batch_size // args.n_classes)])
+
+# Ensure the tensor is on the correct device
+fixed_y = fixed_y.to(args.device)
+
 print(fixed_y)
 print(type(fixed_y))
 print(fixed_y.dist_type)
@@ -154,17 +160,17 @@ for epoch in range(args.n_epochs_gan_pretraining):
     if DEBUG: break
     for i, (images, targets, idx) in enumerate(tqdm(train_loader)):
         x = images.to(args.device)
-        # y = (targets-5).to(args.device) # targets - 5
+        y = (targets-5).to(args.device) # targets - 5
 
         # real_images = Variable(images).to(args.device)
         # feat = classifier(real_images)
         # prob = feat2prob(feat, classifier.center)
         # _, labels = prob.max(1)
 
-        feat = classifier(x)
-        prob = feat2prob(feat, classifier.center)
-        _, y = prob.max(1)
-        y = y.to(args.device)
+        # feat = classifier(x)
+        # prob = feat2prob(feat, classifier.center)
+        # _, y = prob.max(1)
+        # y = y.to(args.device)
 
         G.train()
         D.train()
