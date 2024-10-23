@@ -148,7 +148,7 @@ for epoch in range(args.n_epochs_gan_pretraining):
     if DEBUG: break
     for i, ((images, _),  targets, _) in enumerate(tqdm(train_loader)):
         x = images.to(args.device)
-        y = (targets).to(args.device)
+        y = (targets).to(args.device) # targets - 5
 
         G.train()
         D.train()
@@ -160,7 +160,7 @@ print('\n')
 G.eval()
 print('Generating sample image\n')
 with torch.no_grad():
-    fixed_Gz = G(fixed_z, G.shared(fixed_y))
+    fixed_Gz =  nn.parallel.data_parallel(G, (fixed_z, G.shared(fixed_y)))
 print(fixed_Gz.shape)
 image_filename = '%s/fixed_sample.jpg' % (args.img_training_path)
 
