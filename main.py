@@ -124,6 +124,10 @@ D = Discriminator(n_classes=args.n_classes, resolution= args.img_size).to(args.d
 
 GD = G_D(G, D)
 
+print(G)
+print(D)
+print(GD)
+
 
   # Prepare noise and randomly sampled label arrays
   # Allow for different batch sizes in G
