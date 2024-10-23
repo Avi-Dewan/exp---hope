@@ -147,7 +147,7 @@ print(type(fixed_y))
 
 train = train_fns.GAN_training_function(G, D, GD, z_, y_, batch_size, num_D_steps, num_D_accumulations=1, num_G_accumulations=1)
 
-DEBUG = True
+DEBUG = False
 
 for epoch in range(args.n_epochs_gan_pretraining):
     if DEBUG: break
