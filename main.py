@@ -59,7 +59,7 @@ parser.add_argument('--verbose', type=str, default=False, help='Verbose mode')
 parser.add_argument('--device', type=str, default='cpu', choices=['cuda', 'cpu'])
 
 # Number of classes
-parser.add_argument('--n_classes', type=int, default=10)
+parser.add_argument('--n_classes', type=int, default=5)
 
 # Classifier pretraining parameters
 parser.add_argument('--n_epochs_cls_pretraining', type=int, default=1)
@@ -95,7 +95,7 @@ os.makedirs(args.img_training_path, exist_ok=True)
 
 
 # Parameters (Default for now)
-args.n_classes = 5
+args.n_classes = 10
 batch_size = 50
 num_D_steps = 4
 D_batch_size = batch_size*num_D_steps
