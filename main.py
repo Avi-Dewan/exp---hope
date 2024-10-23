@@ -114,7 +114,7 @@ train_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split
 
 # Classifier pretraining 
 
-classifier = classifier_pretraining(args, train_loader, train_loader)
+classifier = classifier_pretraining(args)
 init_acc, init_nmi, init_ari = test(classifier, train_loader, args)
 
 print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
