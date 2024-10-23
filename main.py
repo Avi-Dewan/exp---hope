@@ -150,7 +150,7 @@ fixed_y = fixed_y.to(args.device)
 
 print(fixed_y)
 print(type(fixed_y))
-print(fixed_y.dist_type)
+# print(fixed_y.dist_type)
 
 train = train_fns.GAN_training_function(G, D, GD, z_, y_, batch_size, num_D_steps, num_D_accumulations=1, num_G_accumulations=1)
 
