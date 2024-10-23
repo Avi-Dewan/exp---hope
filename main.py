@@ -96,7 +96,7 @@ os.makedirs(args.img_training_path, exist_ok=True)
 
 
 # Parameters (Default for now)
-args.n_classes = 10
+args.n_classes = 5
 batch_size = 50
 num_D_steps = 4
 D_batch_size = batch_size*num_D_steps
@@ -107,17 +107,17 @@ G_batch_size = batch_size # max ( args.G_batch_size , batch_size)
 # --------------------
 #   Data loading
 # --------------------
-train_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split='train', aug=None, shuffle=True, target_list=range(0, 10))
+train_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split='train', aug='gan', shuffle=True, target_list=range(5, 10))
 # eval_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split='train', aug=None, shuffle=False, target_list=range(0, 10))
 # train_loader = get_simple_data_loader()
 # --------------------
 
 # Classifier pretraining 
 
-# classifier = classifier_pretraining(args, train_loader, eval_loader)
-# init_acc, init_nmi, init_ari = test(classifier, eval_loader, args)
+classifier = classifier_pretraining(args, train_loader, train_loader)
+init_acc, init_nmi, init_ari = test(classifier, train_loader, args)
 
-# print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
+print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
 
 
 # GAN pretraining on target data annotated by classifier
@@ -142,9 +142,12 @@ fixed_z, fixed_y = gan_utils.prepare_z_y(G_batch_size=G_batch_size, dim_z = args
 fixed_z.sample_()
 fixed_y.sample_()
 
+print(fixed_y)
+print(type(fixed_y))
+
 train = train_fns.GAN_training_function(G, D, GD, z_, y_, batch_size, num_D_steps, num_D_accumulations=1, num_G_accumulations=1)
 
-DEBUG = False
+DEBUG = True
 
 for epoch in range(args.n_epochs_gan_pretraining):
     if DEBUG: break

@@ -127,7 +127,7 @@ def getPsedoLabels(model, train_loader, args):
 
     return pseudoLabels
 
-def classifier_pretraining(args, train_loader, eval_loader):
+def classifier_pretraining(args):
     # Classifier pretraining on source data
     model_dict = torch.load(args.cls_pretraining_path, map_location=args.device)
     model = ResNet(BasicBlock, [2,2,2,2], args.n_classes).to(args.device)

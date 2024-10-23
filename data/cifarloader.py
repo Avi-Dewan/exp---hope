@@ -226,6 +226,13 @@ def CIFAR10Data(root, split='train', aug=None, target_list=range(5)):
             transforms.ToTensor(),
             transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
         ]))
+    elif aug == 'gan':
+        norm_mean = [0.5, 0.5, 0.5]
+        norm_std = [0.5, 0.5, 0.5]
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(norm_mean, norm_std)
+        ])
     dataset = CIFAR10(root=root, split=split, transform=transform, target_list=target_list)
     return dataset
 
