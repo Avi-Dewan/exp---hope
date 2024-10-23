@@ -112,7 +112,7 @@ eval_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split=
 
 # Classifier pretraining 
 
-classifier = classifier_pretraining(args, train_loader, eval_loader)
+# classifier = classifier_pretraining(args, train_loader, eval_loader)
 # init_acc, init_nmi, init_ari = test(classifier, eval_loader, args)
 
 # print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
@@ -173,9 +173,9 @@ torchvision.utils.save_image(torch.tensor(fixed_Gz.float().cpu()), image_filenam
 #     Final Model
 # --------------------
 
-acc, nmi, ari = test(classifier, eval_loader, args)
+# acc, nmi, ari = test(classifier, eval_loader, args)
 # print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
-print('Final ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(acc, nmi, ari))
+# print('Final ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(acc, nmi, ari))
 
 
 
