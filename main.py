@@ -96,7 +96,7 @@ os.makedirs(args.img_training_path, exist_ok=True)
 
 
 # Parameters (Default for now)
-args.n_classes = 10
+args.n_classes = 5
 batch_size = 50
 num_D_steps = 4
 D_batch_size = batch_size*num_D_steps
@@ -107,7 +107,7 @@ G_batch_size = batch_size # max ( args.G_batch_size , batch_size)
 # --------------------
 #   Data loading
 # --------------------
-train_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split='train', aug='gan', shuffle=True, target_list=range(0, 10))
+train_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split='train', aug='gan', shuffle=True, target_list=range(5, 10))
 # eval_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split='train', aug=None, shuffle=False, target_list=range(0, 10))
 # train_loader = get_simple_data_loader()
 # --------------------
@@ -144,6 +144,7 @@ fixed_y.sample_()
 
 print(fixed_y)
 print(type(fixed_y))
+print(fixed_y.dist_type)
 
 train = train_fns.GAN_training_function(G, D, GD, z_, y_, batch_size, num_D_steps, num_D_accumulations=1, num_G_accumulations=1)
 
@@ -153,7 +154,7 @@ for epoch in range(args.n_epochs_gan_pretraining):
     if DEBUG: break
     for i, (images, targets, idx) in enumerate(tqdm(train_loader)):
         x = images.to(args.device)
-        y = (targets).to(args.device) # targets - 5
+        y = (targets-5).to(args.device) # targets - 5
 
         G.train()
         D.train()
