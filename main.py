@@ -148,7 +148,7 @@ for epoch in range(args.n_epochs_gan_pretraining):
     if DEBUG: break
     for i, ((images, _),  targets, _) in enumerate(tqdm(train_loader)):
         x = images.to(args.device)
-        y = (targets - 5).to(args.device)
+        y = (targets).to(args.device)
 
         G.train()
         D.train()
