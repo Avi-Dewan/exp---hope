@@ -108,13 +108,13 @@ G_batch_size = batch_size # max ( args.G_batch_size , batch_size)
 #   Data loading
 # --------------------
 train_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split='train', aug='gan', shuffle=True, target_list=range(5, 10))
-# eval_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split='train', aug=None, shuffle=False, target_list=range(0, 10))
+eval_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split='train', aug=None, shuffle=False, target_list=range(0, 5))
 # train_loader = get_simple_data_loader()
 # --------------------
 
 # Classifier pretraining 
 
-# classifier = classifier_pretraining(args)
+classifier = classifier_pretraining(args)
 # init_acc, init_nmi, init_ari = test(classifier, train_loader, args)
 
 # print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
@@ -154,7 +154,17 @@ for epoch in range(args.n_epochs_gan_pretraining):
     if DEBUG: break
     for i, (images, targets, idx) in enumerate(tqdm(train_loader)):
         x = images.to(args.device)
-        y = (targets-5).to(args.device) # targets - 5
+        # y = (targets-5).to(args.device) # targets - 5
+
+        # real_images = Variable(images).to(args.device)
+        # feat = classifier(real_images)
+        # prob = feat2prob(feat, classifier.center)
+        # _, labels = prob.max(1)
+
+        feat = classifier(x)
+        prob = feat2prob(feat, classifier.center)
+        _, y = prob.max(1)
+        y = y.to(args.device)
 
         G.train()
         D.train()
