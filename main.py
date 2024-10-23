@@ -96,7 +96,7 @@ os.makedirs(args.img_training_path, exist_ok=True)
 
 
 # Parameters (Default for now)
-args.n_classes = 5
+args.n_classes = 10
 batch_size = 50
 num_D_steps = 4
 D_batch_size = batch_size*num_D_steps
@@ -107,7 +107,7 @@ G_batch_size = batch_size # max ( args.G_batch_size , batch_size)
 # --------------------
 #   Data loading
 # --------------------
-train_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split='train', aug='gan', shuffle=True, target_list=range(5, 10))
+train_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split='train', aug=None, shuffle=True, target_list=range(0, 10))
 # eval_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split='train', aug=None, shuffle=False, target_list=range(0, 10))
 # train_loader = get_simple_data_loader()
 # --------------------
