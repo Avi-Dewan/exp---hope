@@ -160,17 +160,17 @@ for epoch in range(args.n_epochs_gan_pretraining):
     if DEBUG: break
     for i, (images, targets, idx) in enumerate(tqdm(train_loader)):
         x = images.to(args.device)
-        y = (targets-5).to(args.device) # targets - 5
+        # y = (targets-5).to(args.device) # targets - 5
 
         # real_images = Variable(images).to(args.device)
         # feat = classifier(real_images)
         # prob = feat2prob(feat, classifier.center)
         # _, labels = prob.max(1)
 
-        # feat = classifier(x)
-        # prob = feat2prob(feat, classifier.center)
-        # _, y = prob.max(1)
-        # y = y.to(args.device)
+        feat = classifier(x)
+        prob = feat2prob(feat, classifier.center)
+        _, y = prob.max(1)
+        y = y.to(args.device)
 
         G.train()
         D.train()
