@@ -78,7 +78,7 @@ parser.add_argument('--num_D_steps', type=int, default=4)
 parser.add_argument('--num_G_steps', type=int, default=1)
 # Paths
 parser.add_argument('--results_path', type=str, default='./results')
-parser.add_argument('--pretraining_path', type=str, default='./pretrained')
+parser.add_argument('--pretraining_path', type=str, default='./results/pretraining')
 parser.add_argument('--training_path', type=str, default='./results/training')
 parser.add_argument('--cls_pretraining_path', type=str, default='./pretrained/resnet18.pth')
 
@@ -180,7 +180,8 @@ else:
         for i, (images, targets, idx) in enumerate(tqdm(train_loader)):
             x = images.to(args.device)
             y = (targets - 5).to(args.device)
-            feat = classifier(x)
+            x_classifier = renormalize_to_standard(x)
+            feat = classifier(x_classifier)
             prob = feat2prob(feat, classifier.center)
             _, y = prob.max(1)
             y = y.to(args.device)
@@ -191,7 +192,7 @@ else:
             D_losses_real.append(metrics['D_loss_real'])
             D_losses_fake.append(metrics['D_loss_fake'])
 
-            print(f"Iter {pretrain_itr}, G_loss: {metrics['G_loss']:.4f}, D_loss_real: {metrics['D_loss_real']:.4f}, D_loss_fake: {metrics['D_loss_fake']:.4f}")
+            # print(f"Iter {pretrain_itr}, G_loss: {metrics['G_loss']:.4f}, D_loss_real: {metrics['D_loss_real']:.4f}, D_loss_fake: {metrics['D_loss_fake']:.4f}")
             pretrain_itr += 1
 
         # Save models after each epoch to pretraining path
