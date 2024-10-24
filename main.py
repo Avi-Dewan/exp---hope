@@ -79,6 +79,7 @@ parser.add_argument('--num_G_steps', type=int, default=1)
 # Paths
 parser.add_argument('--results_path', type=str, default='./results')
 parser.add_argument('--pretraining_path', type=str, default='./results/pretraining')
+parser.add_argument('--models_pretraining_path', type=str, default='')
 parser.add_argument('--training_path', type=str, default='./results/training')
 parser.add_argument('--cls_pretraining_path', type=str, default='./pretrained/resnet18.pth')
 
@@ -93,9 +94,11 @@ os.makedirs(args.img_training_path, exist_ok=True)
 os.makedirs(args.models_training_path, exist_ok=True)
 
 args.img_pretraining_path = os.path.join(args.pretraining_path, 'images')
-args.models_pretraining_path = os.path.join(args.pretraining_path, 'models')
 os.makedirs(args.img_pretraining_path, exist_ok=True)
-os.makedirs(args.models_pretraining_path, exist_ok=True)
+
+if args.models_pretraining_path != '':
+    args.models_pretraining_path = os.path.join(args.pretraining_path, 'models')
+    os.makedirs(args.models_pretraining_path, exist_ok=True)
 
 
 # Parameters (Default for now)
@@ -114,9 +117,9 @@ eval_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split=
 # Classifier pretraining 
 
 classifier = classifier_pretraining(args)
-# init_acc, init_nmi, init_ari = test(classifier, train_loader, args)
+init_acc, init_nmi, init_ari = test(classifier, train_loader, args)
 
-# print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
+print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
 
 
 # GAN pretraining on target data annotated by classifier
