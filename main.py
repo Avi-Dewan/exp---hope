@@ -19,34 +19,18 @@ from models.resnet import ResNet, BasicBlock
 from modules.module import feat2prob, target_distribution 
 from sklearn.metrics.cluster import normalized_mutual_info_score as nmi_score
 from sklearn.metrics import adjusted_rand_score as ari_score
-from utils.util import cluster_acc
+from utils.util import cluster_acc, renormalize_to_standard
 from torch.nn import Parameter
+import matplotlib.pyplot as plt
 
 from data.simpleCIFAR import get_simple_data_loader
-
-def renormalize_to_standard(img_tensor):
-    """
-    Renormalize from (0.5, 0.5, 0.5) normalization to standard CIFAR-10 normalization.
-    """
-    mean_05 = torch.tensor([0.5, 0.5, 0.5], device=img_tensor.device).view(3, 1, 1)
-    std_05 = torch.tensor([0.5, 0.5, 0.5], device=img_tensor.device).view(3, 1, 1)
-
-    mean_std = torch.tensor([0.4914, 0.4822, 0.4465], device=img_tensor.device).view(3, 1, 1)
-    std_std = torch.tensor([0.2023, 0.1994, 0.2010], device=img_tensor.device).view(3, 1, 1)
-
-    # Undo (0.5, 0.5, 0.5) normalization back to [0, 1]
-    img_tensor = img_tensor * std_05 + mean_05
-    # Normalize to standard CIFAR-10 mean and std
-    img_tensor = (img_tensor - mean_std) / std_std
-
-    return img_tensor
 
 @torch.no_grad()
 def test(model, test_loader, args, tsne=False):
     model.eval()
     preds=np.array([])
     targets=np.array([])
-    feats = np.zeros((len(test_loader.dataset), args.n_classes))
+    feats = np.zeros((len(test_loader.dataset), args.n_unlabeled_classes))
     device = next(model.parameters()).device
     for batch_idx, (x, label, idx) in enumerate(tqdm(test_loader)):
         x, label = x.to(device), label.to(device)
@@ -79,13 +63,8 @@ parser.add_argument('--device', type=str, default='cpu', choices=['cuda', 'cpu']
 
 # Number of classes
 parser.add_argument('--n_labeled_classes', default=5, type=int)
-parser.add_argument('--n_classes', type=int, default=5)
+parser.add_argument('--n_unlabeled_classes', type=int, default=5)
 
-# Classifier pretraining parameters
-# parser.add_argument('--n_epochs_cls_pretraining', type=int, default=1)
-# parser.add_argument('--lr_cls_pretraining', type=float, default=0.5)
-# parser.add_argument('--momentum', type=float, default=0.9)
-# parser.add_argument('--weight_decay', type=float, default=1e-4)
 
 # GAN pretraining parameters
 parser.add_argument('--pretrained_gan', type=bool, default=False)
@@ -95,13 +74,12 @@ parser.add_argument('--n_epochs_gan_pretraining', type=int, default=1)
 
 # Training parameters
 parser.add_argument('--lr_cls_training', type=float, default=1e-4)
-parser.add_argument('--lr_d_training', type=float, default=1e-4)
-parser.add_argument('--lr_g_training', type=float, default=1e-4)
 parser.add_argument('--n_epochs_training', type=int, default=0)
-
+parser.add_argument('--num_D_steps', type=int, default=4)
+parser.add_argument('--num_G_steps', type=int, default=1)
 # Paths
 parser.add_argument('--results_path', type=str, default='./results')
-parser.add_argument('--pretraining_path', type=str, default='./results/pretraining')
+parser.add_argument('--pretraining_path', type=str, default='./pretrained')
 parser.add_argument('--training_path', type=str, default='./results/training')
 parser.add_argument('--cls_pretraining_path', type=str, default='./pretrained/resnet18.pth')
 
@@ -112,16 +90,18 @@ args.device = torch.device("cuda" if args.device == 'cuda' and torch.cuda.is_ava
 args.img_training_path = os.path.join(args.training_path, 'images')
 args.models_training_path = os.path.join(args.training_path, 'models')
 os.makedirs(args.img_training_path, exist_ok=True)
+os.makedirs(args.models_training_path, exist_ok=True)
 
 
 # Parameters (Default for now)
-args.n_classes = 5
-batch_size = 50
-num_D_steps = 4
-D_batch_size = batch_size*num_D_steps
-G_batch_size = batch_size # max ( args.G_batch_size , batch_size)
+D_batch_size = args.batch_size*args.num_D_steps
+G_batch_size = args.batch_size # max ( args.G_batch_size , batch_size)
 
-
+# Initialize tracking variables
+pretrain_itr = 1
+G_losses = []
+D_losses_real = []
+D_losses_fake = []
 
 # --------------------
 #   Data loading
@@ -140,8 +120,8 @@ print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_
 
 
 # GAN pretraining on target data annotated by classifier
-G = Generator(n_classes=args.n_classes, dim_z=args.latent_dim, resolution= args.img_size).to(args.device)
-D = Discriminator(n_classes=args.n_classes, resolution= args.img_size).to(args.device)
+G = Generator(n_classes=args.n_unlabeled_classes, dim_z=args.latent_dim, resolution= args.img_size).to(args.device)
+D = Discriminator(n_classes=args.n_unlabeled_classes, resolution= args.img_size).to(args.device)
 
 GD = G_D(G, D)
 
@@ -153,65 +133,89 @@ print(GD)
   # Prepare noise and randomly sampled label arrays
   # Allow for different batch sizes in G
 
-z_, y_ = gan_utils.prepare_z_y(G_batch_size=G_batch_size, dim_z = args.latent_dim, nclasses= args.n_classes,   device=args.device)
+z_, y_ = gan_utils.prepare_z_y(G_batch_size=G_batch_size, dim_z = args.latent_dim, nclasses= args.n_unlabeled_classes,   device=args.device)
 
  # Prepare a fixed z & y to see individual sample evolution throghout training
-fixed_z, fixed_y = gan_utils.prepare_z_y(G_batch_size=G_batch_size, dim_z = args.latent_dim, nclasses= args.n_classes,   device=args.device)
+fixed_z, fixed_y = gan_utils.prepare_z_y(G_batch_size=G_batch_size, dim_z = args.latent_dim, nclasses= args.n_unlabeled_classes,   device=args.device)
 
 fixed_z.sample_()
-fixed_y.sample_()
+# fixed_y.sample_()
 
 # Create a tensor where each class (0 to 4) appears 10 times, repeated serially
-fixed_y = torch.tensor([i for i in range(args.n_classes) for _ in range(G_batch_size // args.n_classes)])
+fixed_y = torch.tensor([i for i in range(args.n_unlabeled_classes) for _ in range(G_batch_size // args.n_unlabeled_classes)])
 
 # Ensure the tensor is on the correct device
 fixed_y = fixed_y.to(args.device)
 
-print(fixed_y)
-print(type(fixed_y))
-# print(fixed_y.dist_type)
 
-train = train_fns.GAN_training_function(G, D, GD, z_, y_, batch_size, num_D_steps, num_D_accumulations=1, num_G_accumulations=1)
+train = train_fns.GAN_training_function(G, D, GD, z_, y_, args.batch_size, args.num_D_steps, num_D_accumulations=1, num_G_accumulations=1)
 
-DEBUG = True
+if args.pretrained_gan and os.path.exists(args.pretrained_gan_path):
+    G = torch.load(os.path.join(args.pretrained_gan_path, 'G.pth')).to(args.device)
+    D = torch.load(os.path.join(args.pretrained_gan_path, 'D.pth')).to(args.device)
+    print("Loaded pre-trained GAN models.")
+else:
+    G = Generator(n_classes=args.n_unlabeled_classes, dim_z=args.latent_dim, resolution=args.img_size).to(args.device)
+    D = Discriminator(n_classes=args.n_unlabeled_classes, resolution=args.img_size).to(args.device)
+    GD = G_D(G, D)
+    print("Training GAN models from scratch.")
 
-for epoch in range(args.n_epochs_gan_pretraining):
-    if DEBUG: break
-    for i, (images, targets, idx) in enumerate(tqdm(train_loader)):
-        x = images.to(args.device)
-        y = (targets-5).to(args.device) # targets - 5
+    # Prepare noise and labels for GAN
+    z_, y_ = gan_utils.prepare_z_y(G_batch_size=args.batch_size, dim_z=args.latent_dim, nclasses=args.n_unlabeled_classes, device=args.device)
+    fixed_z, fixed_y = gan_utils.prepare_z_y(G_batch_size=args.batch_size, dim_z=args.latent_dim, nclasses=args.n_unlabeled_classes, device=args.device)
+    fixed_z.sample_()
+    fixed_y = torch.tensor([i for i in range(args.n_unlabeled_classes) for _ in range(args.batch_size // args.n_unlabeled_classes)]).to(args.device)
 
-        # real_images = Variable(images).to(args.device)
-        # feat = classifier(real_images)
-        # prob = feat2prob(feat, classifier.center)
-        # _, labels = prob.max(1)
+    # GAN training function
+    train = train_fns.GAN_training_function(G, D, GD, z_, y_, args.batch_size, args.num_D_steps, num_D_accumulations=1, num_G_accumulations=1)
 
-        feat = classifier(x)
-        prob = feat2prob(feat, classifier.center)
-        _, y = prob.max(1)
-        y = y.to(args.device)
+    # Training loop
+    for epoch in range(args.n_epochs_gan_pretraining):
+        for i, (images, targets, idx) in enumerate(tqdm(train_loader)):
+            x = images.to(args.device)
+            y = (targets - 5).to(args.device)
+            feat = classifier(x)
+            prob = feat2prob(feat, classifier.center)
+            _, y = prob.max(1)
+            y = y.to(args.device)
 
-        G.train()
-        D.train()
+            # Train GAN
+            metrics = train(x, y)
+            G_losses.append(metrics['G_loss'])
+            D_losses_real.append(metrics['D_loss_real'])
+            D_losses_fake.append(metrics['D_loss_fake'])
 
-        metrics = train(x, y)
-    print("Epoch: ", epoch , " completed...")
+            print(f"Iter {pretrain_itr}, G_loss: {metrics['G_loss']:.4f}, D_loss_real: {metrics['D_loss_real']:.4f}, D_loss_fake: {metrics['D_loss_fake']:.4f}")
+            pretrain_itr += 1
 
-print('Finished Training GAN')
-print('\n')
+        # Save models after each epoch
+        torch.save(G, os.path.join(args.pretrained_gan_path, 'G.pth'))
+        torch.save(D, os.path.join(args.pretrained_gan_path, 'D.pth'))
+        print(f"Epoch {epoch + 1} completed. GAN models saved.")
+
+# Save losses
+loss_data = {'G_losses': G_losses, 'D_losses_real': D_losses_real, 'D_losses_fake': D_losses_fake}
+np.save(os.path.join(args.results_path, 'gan_pretraining_losses.npy'), loss_data)
+print("Loss data saved.")
+
+# Plot and save the loss curves
+plt.figure()
+plt.plot(G_losses, label="G_loss")
+plt.plot(D_losses_real, label="D_loss_real")
+plt.plot(D_losses_fake, label="D_loss_fake")
+plt.xlabel("Iteration")
+plt.ylabel("Loss")
+plt.legend()
+plt.title("GAN Pretraining Loss")
+plt.savefig(os.path.join(args.results_path, 'gan_pretraining_loss_plot.png'))
+
+# Generate sample image
 G.eval()
-print('Generating sample image\n')
 with torch.no_grad():
-    fixed_Gz =  nn.parallel.data_parallel(G, (fixed_z, G.shared(fixed_y)))
-print(fixed_Gz.shape)
-image_filename = '%s/fixed_sample.jpg' % (args.img_training_path)
-
-print(fixed_Gz)
-print(fixed_Gz.float())
-
-torchvision.utils.save_image(torch.tensor(fixed_Gz.float().cpu()), image_filename,
-                             nrow=int(fixed_Gz.shape[0] **0.5), normalize=True)
-# --------------------
+    fixed_Gz = nn.parallel.data_parallel(G, (fixed_z, G.shared(fixed_y)))
+image_filename = f'{args.img_training_path}/fixed_sample.jpg'
+torchvision.utils.save_image(fixed_Gz.float().cpu(), image_filename, nrow=int(fixed_Gz.shape[0] ** 0.5), normalize=True)
+print(f"Sample images saved at {image_filename}.")
 #     Final Model
 # --------------------
 
