@@ -130,7 +130,7 @@ def getPsedoLabels(model, train_loader, args):
 def classifier_pretraining(args):
     # Classifier pretraining on source data
     model_dict = torch.load(args.cls_pretraining_path, map_location=args.device)
-    model = ResNet(BasicBlock, [2,2,2,2], args.n_unlabeld_classes).to(args.device)
+    model = ResNet(BasicBlock, [2,2,2,2], args.n_unlabeled_classes).to(args.device)
     model.load_state_dict(model_dict['state_dict'], strict=False)
     model.center = Parameter(model_dict['center'])
 
