@@ -115,83 +115,83 @@ eval_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split=
 # Classifier pretraining 
 
 classifier = classifier_pretraining(args)
-# init_acc, init_nmi, init_ari = test(classifier, train_loader, args)
+init_acc, init_nmi, init_ari = test(classifier, train_loader, args)
 
-# print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
-
-
-# GAN pretraining on target data annotated by classifier
-G = Generator(n_classes=args.n_classes, dim_z=args.latent_dim, resolution= args.img_size).to(args.device)
-D = Discriminator(n_classes=args.n_classes, resolution= args.img_size).to(args.device)
-
-GD = G_D(G, D)
-
-print(G)
-print(D)
-print(GD)
+print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
 
 
-  # Prepare noise and randomly sampled label arrays
-  # Allow for different batch sizes in G
+# # GAN pretraining on target data annotated by classifier
+# G = Generator(n_classes=args.n_classes, dim_z=args.latent_dim, resolution= args.img_size).to(args.device)
+# D = Discriminator(n_classes=args.n_classes, resolution= args.img_size).to(args.device)
 
-z_, y_ = gan_utils.prepare_z_y(G_batch_size=G_batch_size, dim_z = args.latent_dim, nclasses= args.n_classes,   device=args.device)
+# GD = G_D(G, D)
 
- # Prepare a fixed z & y to see individual sample evolution throghout training
-fixed_z, fixed_y = gan_utils.prepare_z_y(G_batch_size=G_batch_size, dim_z = args.latent_dim, nclasses= args.n_classes,   device=args.device)
+# print(G)
+# print(D)
+# print(GD)
 
-fixed_z.sample_()
-fixed_y.sample_()
 
-# Create a tensor where each class (0 to 4) appears 10 times, repeated serially
-fixed_y = torch.tensor([i for i in range(args.n_classes) for _ in range(G_batch_size // args.n_classes)])
+#   # Prepare noise and randomly sampled label arrays
+#   # Allow for different batch sizes in G
 
-# Ensure the tensor is on the correct device
-fixed_y = fixed_y.to(args.device)
+# z_, y_ = gan_utils.prepare_z_y(G_batch_size=G_batch_size, dim_z = args.latent_dim, nclasses= args.n_classes,   device=args.device)
 
-print(fixed_y)
-print(type(fixed_y))
-# print(fixed_y.dist_type)
+#  # Prepare a fixed z & y to see individual sample evolution throghout training
+# fixed_z, fixed_y = gan_utils.prepare_z_y(G_batch_size=G_batch_size, dim_z = args.latent_dim, nclasses= args.n_classes,   device=args.device)
 
-train = train_fns.GAN_training_function(G, D, GD, z_, y_, batch_size, num_D_steps, num_D_accumulations=1, num_G_accumulations=1)
+# fixed_z.sample_()
+# fixed_y.sample_()
 
-DEBUG = False
+# # Create a tensor where each class (0 to 4) appears 10 times, repeated serially
+# fixed_y = torch.tensor([i for i in range(args.n_classes) for _ in range(G_batch_size // args.n_classes)])
 
-for epoch in range(args.n_epochs_gan_pretraining):
-    if DEBUG: break
-    for i, (images, targets, idx) in enumerate(tqdm(train_loader)):
-        x = images.to(args.device)
-        y = (targets-5).to(args.device) # targets - 5
+# # Ensure the tensor is on the correct device
+# fixed_y = fixed_y.to(args.device)
 
-        # real_images = Variable(images).to(args.device)
-        # feat = classifier(real_images)
-        # prob = feat2prob(feat, classifier.center)
-        # _, labels = prob.max(1)
+# print(fixed_y)
+# print(type(fixed_y))
+# # print(fixed_y.dist_type)
 
-        # feat = classifier(x)
-        # prob = feat2prob(feat, classifier.center)
-        # _, y = prob.max(1)
-        # y = y.to(args.device)
+# train = train_fns.GAN_training_function(G, D, GD, z_, y_, batch_size, num_D_steps, num_D_accumulations=1, num_G_accumulations=1)
 
-        G.train()
-        D.train()
+# DEBUG = True
 
-        metrics = train(x, y)
-    print("Epoch: ", epoch , " completed...")
+# for epoch in range(args.n_epochs_gan_pretraining):
+#     if DEBUG: break
+#     for i, (images, targets, idx) in enumerate(tqdm(train_loader)):
+#         x = images.to(args.device)
+#         y = (targets-5).to(args.device) # targets - 5
 
-print('Finished Training GAN')
-print('\n')
-G.eval()
-print('Generating sample image\n')
-with torch.no_grad():
-    fixed_Gz =  nn.parallel.data_parallel(G, (fixed_z, G.shared(fixed_y)))
-print(fixed_Gz.shape)
-image_filename = '%s/fixed_sample.jpg' % (args.img_training_path)
+#         # real_images = Variable(images).to(args.device)
+#         # feat = classifier(real_images)
+#         # prob = feat2prob(feat, classifier.center)
+#         # _, labels = prob.max(1)
 
-print(fixed_Gz)
-print(fixed_Gz.float())
+#         # feat = classifier(x)
+#         # prob = feat2prob(feat, classifier.center)
+#         # _, y = prob.max(1)
+#         # y = y.to(args.device)
 
-torchvision.utils.save_image(torch.tensor(fixed_Gz.float().cpu()), image_filename,
-                             nrow=int(fixed_Gz.shape[0] **0.5), normalize=True)
+#         G.train()
+#         D.train()
+
+#         metrics = train(x, y)
+#     print("Epoch: ", epoch , " completed...")
+
+# print('Finished Training GAN')
+# print('\n')
+# G.eval()
+# print('Generating sample image\n')
+# with torch.no_grad():
+#     fixed_Gz =  nn.parallel.data_parallel(G, (fixed_z, G.shared(fixed_y)))
+# print(fixed_Gz.shape)
+# image_filename = '%s/fixed_sample.jpg' % (args.img_training_path)
+
+# print(fixed_Gz)
+# print(fixed_Gz.float())
+
+# torchvision.utils.save_image(torch.tensor(fixed_Gz.float().cpu()), image_filename,
+#                              nrow=int(fixed_Gz.shape[0] **0.5), normalize=True)
 # --------------------
 #     Final Model
 # --------------------
