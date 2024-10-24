@@ -96,7 +96,7 @@ os.makedirs(args.models_training_path, exist_ok=True)
 args.img_pretraining_path = os.path.join(args.pretraining_path, 'images')
 os.makedirs(args.img_pretraining_path, exist_ok=True)
 
-if args.models_pretraining_path != '':
+if args.models_pretraining_path == '':
     args.models_pretraining_path = os.path.join(args.pretraining_path, 'models')
     os.makedirs(args.models_pretraining_path, exist_ok=True)
 
