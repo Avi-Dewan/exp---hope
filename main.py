@@ -67,7 +67,7 @@ parser.add_argument('--n_unlabeled_classes', type=int, default=5)
 
 
 # GAN pretraining parameters
-parser.add_argument('--pretrained_gan', type=bool, default=False)
+parser.add_argument('--pretrained_gan', type=bool, default=True)
 parser.add_argument('--latent_dim', type=int, default=128)
 parser.add_argument('--n_epochs_gan_pretraining', type=int, default=1)
 
@@ -85,6 +85,7 @@ parser.add_argument('--cls_pretraining_path', type=str, default='./pretrained/re
 args = parser.parse_args()
 args.device = torch.device("cuda" if args.device == 'cuda' and torch.cuda.is_available() else 'cpu')
 
+print(args.device)
 # Updating paths based on args
 args.img_training_path = os.path.join(args.training_path, 'images')
 args.models_training_path = os.path.join(args.training_path, 'models')
@@ -101,16 +102,6 @@ os.makedirs(args.models_pretraining_path, exist_ok=True)
 D_batch_size = args.batch_size*args.num_D_steps
 G_batch_size = args.batch_size # max ( args.G_batch_size , batch_size)
 
-# Initialize tracking variables
-pretrain_itr = 1
-G_losses = []
-D_losses_real = []
-D_losses_fake = []
-
-# Initialize tracking variables for epoch-wise losses
-epoch_G_losses = []
-epoch_D_losses_real = []
-epoch_D_losses_fake = []
 
 # --------------------
 #   Data loading
@@ -123,9 +114,9 @@ eval_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split=
 # Classifier pretraining 
 
 classifier = classifier_pretraining(args)
-init_acc, init_nmi, init_ari = test(classifier, train_loader, args)
+# init_acc, init_nmi, init_ari = test(classifier, train_loader, args)
 
-print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
+# print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
 
 
 # GAN pretraining on target data annotated by classifier
@@ -156,6 +147,16 @@ fixed_y = torch.tensor([i for i in range(args.n_unlabeled_classes) for _ in rang
 # Ensure the tensor is on the correct device
 fixed_y = fixed_y.to(args.device)
 
+# Initialize tracking variables
+pretrain_itr = 1
+G_losses = []
+D_losses_real = []
+D_losses_fake = []
+
+# Initialize tracking variables for epoch-wise losses
+epoch_G_losses = []
+epoch_D_losses_real = []
+epoch_D_losses_fake = []
 
 train = train_fns.GAN_training_function(G, D, GD, z_, y_, args.batch_size, args.num_D_steps, num_D_accumulations=1, num_G_accumulations=1)
 
@@ -165,6 +166,10 @@ if args.pretrained_gan and os.path.exists(os.path.join(args.models_pretraining_p
     G = torch.load(os.path.join(args.models_pretraining_path, 'G.pth')).to(args.device)
     D = torch.load(os.path.join(args.models_pretraining_path, 'D.pth')).to(args.device)
     print("Loaded pre-trained GAN models.")
+# if args.pretrained_gan and os.path.exists(args.pretrained_G) and os.path.exists(args.pretrained_D):
+#     G = torch.load(args.pretrained_G).to(args.device)
+#     D = torch.load(args.pretrained_D).to(args.device)
+#     print("Loaded pre-trained GAN models.")
 else:
     G = Generator(n_classes=args.n_unlabeled_classes, dim_z=args.latent_dim, resolution=args.img_size).to(args.device)
     D = Discriminator(n_classes=args.n_unlabeled_classes, resolution=args.img_size).to(args.device)
@@ -226,37 +231,37 @@ else:
         torch.save(D, os.path.join(args.models_pretraining_path, 'D.pth'))
         print(f"Epoch {epoch + 1} completed. GAN models saved. G_loss: {G_loss_epoch_avg:.4f}, D_loss_real: {D_loss_real_epoch_avg:.4f}, D_loss_fake: {D_loss_fake_epoch_avg:.4f}")
 
-# Save losses in pretraining path
-loss_data = {'G_losses': G_losses, 'D_losses_real': D_losses_real, 'D_losses_fake': D_losses_fake}
-np.save(os.path.join(args.pretraining_path, 'gan_pretraining_losses.npy'), loss_data)
-print("Loss data saved.")
+    # Save losses in pretraining path
+    loss_data = {'G_losses': G_losses, 'D_losses_real': D_losses_real, 'D_losses_fake': D_losses_fake}
+    np.save(os.path.join(args.pretraining_path, 'gan_pretraining_losses.npy'), loss_data)
+    print("Loss data saved.")
 
-# Plot and save the loss curves
-plt.figure()
-plt.plot(G_losses, label="G_loss")
-plt.plot(D_losses_real, label="D_loss_real")
-plt.plot(D_losses_fake, label="D_loss_fake")
-plt.xlabel("Iteration")
-plt.ylabel("Loss")
-plt.legend()
-plt.title("GAN Pretraining Loss")
-plt.savefig(os.path.join(args.pretraining_path, 'gan_pretraining_loss_plot.png'))
+    # Plot and save the loss curves
+    plt.figure()
+    plt.plot(G_losses, label="G_loss")
+    plt.plot(D_losses_real, label="D_loss_real")
+    plt.plot(D_losses_fake, label="D_loss_fake")
+    plt.xlabel("Iteration")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.title("GAN Pretraining Loss")
+    plt.savefig(os.path.join(args.pretraining_path, 'gan_pretraining_loss_plot.png'))
 
-# Save epoch-wise loss data
-epoch_loss_data = {'epoch_G_losses': epoch_G_losses, 'epoch_D_losses_real': epoch_D_losses_real, 'epoch_D_losses_fake': epoch_D_losses_fake}
-np.save(os.path.join(args.pretraining_path, 'gan_pretraining_epoch_losses.npy'), epoch_loss_data)
-print("Epoch-wise loss data saved.")
+    # Save epoch-wise loss data
+    epoch_loss_data = {'epoch_G_losses': epoch_G_losses, 'epoch_D_losses_real': epoch_D_losses_real, 'epoch_D_losses_fake': epoch_D_losses_fake}
+    np.save(os.path.join(args.pretraining_path, 'gan_pretraining_epoch_losses.npy'), epoch_loss_data)
+    print("Epoch-wise loss data saved.")
 
-# Plot and save the epoch-wise loss curves
-plt.figure()
-plt.plot(epoch_G_losses, label="G_loss")
-plt.plot(epoch_D_losses_real, label="D_loss_real")
-plt.plot(epoch_D_losses_fake, label="D_loss_fake")
-plt.xlabel("Epoch")
-plt.ylabel("Loss")
-plt.legend()
-plt.title("GAN Pretraining Loss (Epoch-wise)")
-plt.savefig(os.path.join(args.pretraining_path, 'gan_pretraining_epoch_loss_plot.png'))
+    # Plot and save the epoch-wise loss curves
+    plt.figure()
+    plt.plot(epoch_G_losses, label="G_loss")
+    plt.plot(epoch_D_losses_real, label="D_loss_real")
+    plt.plot(epoch_D_losses_fake, label="D_loss_fake")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.title("GAN Pretraining Loss (Epoch-wise)")
+    plt.savefig(os.path.join(args.pretraining_path, 'gan_pretraining_epoch_loss_plot.png'))
 
 
 # Generate sample image
