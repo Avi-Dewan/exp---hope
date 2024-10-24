@@ -233,6 +233,13 @@ def CIFAR10Data(root, split='train', aug=None, target_list=range(5)):
             transforms.ToTensor(),
             transforms.Normalize(norm_mean, norm_std)
         ])
+    elif aug == 'gan_twice':
+        transform = TransformTwice(transforms.Compose([
+            RandomTranslateWithReflect(4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ]))
     dataset = CIFAR10(root=root, split=split, transform=transform, target_list=target_list)
     return dataset
 

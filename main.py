@@ -24,6 +24,23 @@ from torch.nn import Parameter
 
 from data.simpleCIFAR import get_simple_data_loader
 
+def renormalize_to_standard(img_tensor):
+    """
+    Renormalize from (0.5, 0.5, 0.5) normalization to standard CIFAR-10 normalization.
+    """
+    mean_05 = torch.tensor([0.5, 0.5, 0.5], device=img_tensor.device).view(3, 1, 1)
+    std_05 = torch.tensor([0.5, 0.5, 0.5], device=img_tensor.device).view(3, 1, 1)
+
+    mean_std = torch.tensor([0.4914, 0.4822, 0.4465], device=img_tensor.device).view(3, 1, 1)
+    std_std = torch.tensor([0.2023, 0.1994, 0.2010], device=img_tensor.device).view(3, 1, 1)
+
+    # Undo (0.5, 0.5, 0.5) normalization back to [0, 1]
+    img_tensor = img_tensor * std_05 + mean_05
+    # Normalize to standard CIFAR-10 mean and std
+    img_tensor = (img_tensor - mean_std) / std_std
+
+    return img_tensor
+
 @torch.no_grad()
 def test(model, test_loader, args, tsne=False):
     model.eval()
@@ -33,6 +50,7 @@ def test(model, test_loader, args, tsne=False):
     device = next(model.parameters()).device
     for batch_idx, (x, label, idx) in enumerate(tqdm(test_loader)):
         x, label = x.to(device), label.to(device)
+        x = renormalize_to_standard(x)
         feat = model(x)
         prob = feat2prob(feat, model.center)
         _, pred = prob.max(1)
@@ -60,18 +78,19 @@ parser.add_argument('--verbose', type=str, default=False, help='Verbose mode')
 parser.add_argument('--device', type=str, default='cpu', choices=['cuda', 'cpu'])
 
 # Number of classes
+parser.add_argument('--n_labeled_classes', default=5, type=int)
 parser.add_argument('--n_classes', type=int, default=5)
 
 # Classifier pretraining parameters
-parser.add_argument('--n_epochs_cls_pretraining', type=int, default=1)
-parser.add_argument('--lr_cls_pretraining', type=float, default=0.5)
-parser.add_argument('--momentum', type=float, default=0.9)
-parser.add_argument('--weight_decay', type=float, default=1e-4)
+# parser.add_argument('--n_epochs_cls_pretraining', type=int, default=1)
+# parser.add_argument('--lr_cls_pretraining', type=float, default=0.5)
+# parser.add_argument('--momentum', type=float, default=0.9)
+# parser.add_argument('--weight_decay', type=float, default=1e-4)
 
 # GAN pretraining parameters
+parser.add_argument('--pretrained_gan', type=bool, default=False)
+parser.add_argument('--pretrained_gan_path', type=str, default='')
 parser.add_argument('--latent_dim', type=int, default=128)
-parser.add_argument('--lr_d_pretraining', type=float, default=1e-4)
-parser.add_argument('--lr_g_pretraining', type=float, default=1e-4)
 parser.add_argument('--n_epochs_gan_pretraining', type=int, default=1)
 
 # Training parameters
@@ -120,78 +139,78 @@ init_acc, init_nmi, init_ari = test(classifier, train_loader, args)
 print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
 
 
-# # GAN pretraining on target data annotated by classifier
-# G = Generator(n_classes=args.n_classes, dim_z=args.latent_dim, resolution= args.img_size).to(args.device)
-# D = Discriminator(n_classes=args.n_classes, resolution= args.img_size).to(args.device)
+# GAN pretraining on target data annotated by classifier
+G = Generator(n_classes=args.n_classes, dim_z=args.latent_dim, resolution= args.img_size).to(args.device)
+D = Discriminator(n_classes=args.n_classes, resolution= args.img_size).to(args.device)
 
-# GD = G_D(G, D)
+GD = G_D(G, D)
 
-# print(G)
-# print(D)
-# print(GD)
+print(G)
+print(D)
+print(GD)
 
 
-#   # Prepare noise and randomly sampled label arrays
-#   # Allow for different batch sizes in G
+  # Prepare noise and randomly sampled label arrays
+  # Allow for different batch sizes in G
 
-# z_, y_ = gan_utils.prepare_z_y(G_batch_size=G_batch_size, dim_z = args.latent_dim, nclasses= args.n_classes,   device=args.device)
+z_, y_ = gan_utils.prepare_z_y(G_batch_size=G_batch_size, dim_z = args.latent_dim, nclasses= args.n_classes,   device=args.device)
 
-#  # Prepare a fixed z & y to see individual sample evolution throghout training
-# fixed_z, fixed_y = gan_utils.prepare_z_y(G_batch_size=G_batch_size, dim_z = args.latent_dim, nclasses= args.n_classes,   device=args.device)
+ # Prepare a fixed z & y to see individual sample evolution throghout training
+fixed_z, fixed_y = gan_utils.prepare_z_y(G_batch_size=G_batch_size, dim_z = args.latent_dim, nclasses= args.n_classes,   device=args.device)
 
-# fixed_z.sample_()
-# fixed_y.sample_()
+fixed_z.sample_()
+fixed_y.sample_()
 
-# # Create a tensor where each class (0 to 4) appears 10 times, repeated serially
-# fixed_y = torch.tensor([i for i in range(args.n_classes) for _ in range(G_batch_size // args.n_classes)])
+# Create a tensor where each class (0 to 4) appears 10 times, repeated serially
+fixed_y = torch.tensor([i for i in range(args.n_classes) for _ in range(G_batch_size // args.n_classes)])
 
-# # Ensure the tensor is on the correct device
-# fixed_y = fixed_y.to(args.device)
+# Ensure the tensor is on the correct device
+fixed_y = fixed_y.to(args.device)
 
-# print(fixed_y)
-# print(type(fixed_y))
-# # print(fixed_y.dist_type)
+print(fixed_y)
+print(type(fixed_y))
+# print(fixed_y.dist_type)
 
-# train = train_fns.GAN_training_function(G, D, GD, z_, y_, batch_size, num_D_steps, num_D_accumulations=1, num_G_accumulations=1)
+train = train_fns.GAN_training_function(G, D, GD, z_, y_, batch_size, num_D_steps, num_D_accumulations=1, num_G_accumulations=1)
 
-# DEBUG = True
+DEBUG = True
 
-# for epoch in range(args.n_epochs_gan_pretraining):
-#     if DEBUG: break
-#     for i, (images, targets, idx) in enumerate(tqdm(train_loader)):
-#         x = images.to(args.device)
-#         y = (targets-5).to(args.device) # targets - 5
+for epoch in range(args.n_epochs_gan_pretraining):
+    if DEBUG: break
+    for i, (images, targets, idx) in enumerate(tqdm(train_loader)):
+        x = images.to(args.device)
+        y = (targets-5).to(args.device) # targets - 5
 
-#         # real_images = Variable(images).to(args.device)
-#         # feat = classifier(real_images)
-#         # prob = feat2prob(feat, classifier.center)
-#         # _, labels = prob.max(1)
+        # real_images = Variable(images).to(args.device)
+        # feat = classifier(real_images)
+        # prob = feat2prob(feat, classifier.center)
+        # _, labels = prob.max(1)
 
-#         # feat = classifier(x)
-#         # prob = feat2prob(feat, classifier.center)
-#         # _, y = prob.max(1)
-#         # y = y.to(args.device)
+        feat = classifier(x)
+        prob = feat2prob(feat, classifier.center)
+        _, y = prob.max(1)
+        y = y.to(args.device)
 
-#         G.train()
-#         D.train()
+        G.train()
+        D.train()
 
-#         metrics = train(x, y)
-#     print("Epoch: ", epoch , " completed...")
+        metrics = train(x, y)
+    print("Epoch: ", epoch , " completed...")
 
-# print('Finished Training GAN')
-# print('\n')
-# G.eval()
-# print('Generating sample image\n')
-# with torch.no_grad():
-#     fixed_Gz =  nn.parallel.data_parallel(G, (fixed_z, G.shared(fixed_y)))
-# print(fixed_Gz.shape)
-# image_filename = '%s/fixed_sample.jpg' % (args.img_training_path)
+print('Finished Training GAN')
+print('\n')
+G.eval()
+print('Generating sample image\n')
+with torch.no_grad():
+    fixed_Gz =  nn.parallel.data_parallel(G, (fixed_z, G.shared(fixed_y)))
+print(fixed_Gz.shape)
+image_filename = '%s/fixed_sample.jpg' % (args.img_training_path)
 
-# print(fixed_Gz)
-# print(fixed_Gz.float())
+print(fixed_Gz)
+print(fixed_Gz.float())
 
-# torchvision.utils.save_image(torch.tensor(fixed_Gz.float().cpu()), image_filename,
-#                              nrow=int(fixed_Gz.shape[0] **0.5), normalize=True)
+torchvision.utils.save_image(torch.tensor(fixed_Gz.float().cpu()), image_filename,
+                             nrow=int(fixed_Gz.shape[0] **0.5), normalize=True)
 # --------------------
 #     Final Model
 # --------------------

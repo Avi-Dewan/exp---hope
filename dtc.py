@@ -37,9 +37,9 @@ def init_prob_kmeans(model, eval_loader, args):
         feats[idx, :] = feat.data.cpu().numpy()
         targets[idx] = label.data.cpu().numpy()
     # evaluate clustering performance
-    pca = PCA(n_components=args.n_clusters)
+    pca = PCA(n_components=args.n_unlabeled_classes)
     feats = pca.fit_transform(feats)
-    kmeans = KMeans(n_clusters=args.n_clusters, n_init=20)
+    kmeans = KMeans(n_clusters=args.n_unlabeled_classes, n_init=20)
     y_pred = kmeans.fit_predict(feats) 
     acc, nmi, ari = cluster_acc(targets, y_pred), nmi_score(targets, y_pred), ari_score(targets, y_pred)
     print('Init acc {:.4f}, nmi {:.4f}, ari {:.4f}'.format(acc, nmi, ari))
@@ -135,9 +135,9 @@ def TE_train(model, train_loader, eva_loader, args):
     w = 0
     alpha = 0.6
     ntrain = len(train_loader.dataset)
-    Z = torch.zeros(ntrain, args.n_clusters).float().to(device)        # intermediate values
-    z_ema = torch.zeros(ntrain, args.n_clusters).float().to(device)        # temporal outputs
-    z_epoch = torch.zeros(ntrain, args.n_clusters).float().to(device)  # current outputs
+    Z = torch.zeros(ntrain, args.n_unlabeled_classes).float().to(device)        # intermediate values
+    z_ema = torch.zeros(ntrain, args.n_unlabeled_classes).float().to(device)        # temporal outputs
+    z_epoch = torch.zeros(ntrain, args.n_unlabeled_classes).float().to(device)  # current outputs
     for epoch in range(args.epochs):
         loss_record = AverageMeter()
         model.train()
@@ -171,9 +171,9 @@ def TEP_train(model, train_loader, eva_loader, args):
     w = 0
     alpha = 0.6
     ntrain = len(train_loader.dataset)
-    Z = torch.zeros(ntrain, args.n_clusters).float().to(device)        # intermediate values
-    z_bars = torch.zeros(ntrain, args.n_clusters).float().to(device)        # temporal outputs
-    z_epoch = torch.zeros(ntrain, args.n_clusters).float().to(device)  # current outputs
+    Z = torch.zeros(ntrain, args.n_unlabeled_classes).float().to(device)        # intermediate values
+    z_bars = torch.zeros(ntrain, args.n_unlabeled_classes).float().to(device)        # temporal outputs
+    z_epoch = torch.zeros(ntrain, args.n_unlabeled_classes).float().to(device)  # current outputs
     for epoch in range(args.epochs):
         loss_record = AverageMeter()
         model.train()
@@ -202,8 +202,8 @@ def test(model, test_loader, args, tsne=False):
     model.eval()
     preds=np.array([])
     targets=np.array([])
-    feats = np.zeros((len(test_loader.dataset), args.n_clusters))
-    probs= np.zeros((len(test_loader.dataset), args.n_clusters))
+    feats = np.zeros((len(test_loader.dataset), args.n_unlabeled_classes))
+    probs= np.zeros((len(test_loader.dataset), args.n_unlabeled_classes))
     for batch_idx, (x, label, idx) in enumerate(tqdm(test_loader)):
         x, label = x.to(device), label.to(device)
         feat = model(x)
@@ -246,7 +246,7 @@ if __name__ == "__main__":
     parser.add_argument('--rampup_coefficient', type=float, default=10.0)
     parser.add_argument('--batch_size', default=128, type=int)
     parser.add_argument('--update_interval', default=5, type=int)
-    parser.add_argument('--n_clusters', default=5, type=int)
+    parser.add_argument('--n_unlabeled_classes', default=5, type=int)
     parser.add_argument('--n_labeled_classes', default=5, type=int)
     parser.add_argument('--seed', default=1, type=int)
     parser.add_argument('--save_txt', default=False, type=str2bool, help='save txt or not', metavar='BOOL')
@@ -269,8 +269,8 @@ if __name__ == "__main__":
     args.model_dir = model_dir+'/'+args.model_name+'.pth'
     args.save_txt_path= args.exp_root+ '{}/{}/{}'.format(runner_name, args.DTC, args.save_txt_name)
 
-    train_loader = CIFAR10Loader(root=args.dataset_root, batch_size=args.batch_size, split='train', aug='twice', shuffle=True, target_list=range(args.n_labeled_classes, args.n_labeled_classes+args.n_clusters))
-    eval_loader = CIFAR10Loader(root=args.dataset_root, batch_size=args.batch_size, split='train', aug=None, shuffle=False, target_list=range(args.n_labeled_classes, args.n_labeled_classes+args.n_clusters))
+    train_loader = CIFAR10Loader(root=args.dataset_root, batch_size=args.batch_size, split='train', aug='twice', shuffle=True, target_list=range(args.n_labeled_classes, args.n_labeled_classes+args.n_unlabeled_classes))
+    eval_loader = CIFAR10Loader(root=args.dataset_root, batch_size=args.batch_size, split='train', aug=None, shuffle=False, target_list=range(args.n_labeled_classes, args.n_labeled_classes+args.n_unlabeled_classes))
 
 
     model = ResNet(BasicBlock, [2,2,2,2], 5).to(device)
@@ -282,9 +282,9 @@ if __name__ == "__main__":
 
 
 
-    model = ResNet(BasicBlock, [2,2,2,2], args.n_clusters).to(device)
+    model = ResNet(BasicBlock, [2,2,2,2], args.n_unlabeled_classes).to(device)
     model.load_state_dict(init_feat_extractor.state_dict(), strict=False)
-    model.center= Parameter(torch.Tensor(args.n_clusters, args.n_clusters))
+    model.center= Parameter(torch.Tensor(args.n_unlabeled_classes, args.n_unlabeled_classes))
     model.center.data = torch.tensor(init_centers).float().to(device)
 
     print(model)
@@ -316,7 +316,7 @@ if __name__ == "__main__":
     # model_dict = torch.load(args.model_dir)
 
     # # Create the model with clusters
-    # model = ResNet(BasicBlock, [2,2,2,2], args.n_clusters).to(device)
+    # model = ResNet(BasicBlock, [2,2,2,2], args.n_unlabeled_classes).to(device)
 
     # # Load the state dictionary into the model
     # model.load_state_dict(model_dict['state_dict'], strict=False)
