@@ -68,7 +68,6 @@ parser.add_argument('--n_unlabeled_classes', type=int, default=5)
 
 # GAN pretraining parameters
 parser.add_argument('--pretrained_gan', type=bool, default=False)
-parser.add_argument('--pretrained_gan_path', type=str, default='')
 parser.add_argument('--latent_dim', type=int, default=128)
 parser.add_argument('--n_epochs_gan_pretraining', type=int, default=1)
 
@@ -91,6 +90,11 @@ args.img_training_path = os.path.join(args.training_path, 'images')
 args.models_training_path = os.path.join(args.training_path, 'models')
 os.makedirs(args.img_training_path, exist_ok=True)
 os.makedirs(args.models_training_path, exist_ok=True)
+
+args.img_pretraining_path = os.path.join(args.pretraining_path, 'images')
+args.models_pretraining_path = os.path.join(args.pretraining_path, 'models')
+os.makedirs(args.img_pretraining_path, exist_ok=True)
+os.makedirs(args.models_pretraining_path, exist_ok=True)
 
 
 # Parameters (Default for now)
@@ -150,9 +154,11 @@ fixed_y = fixed_y.to(args.device)
 
 train = train_fns.GAN_training_function(G, D, GD, z_, y_, args.batch_size, args.num_D_steps, num_D_accumulations=1, num_G_accumulations=1)
 
-if args.pretrained_gan and os.path.exists(args.pretrained_gan_path):
-    G = torch.load(os.path.join(args.pretrained_gan_path, 'G.pth')).to(args.device)
-    D = torch.load(os.path.join(args.pretrained_gan_path, 'D.pth')).to(args.device)
+# Load pre-trained GAN models if available
+# Load pre-trained GAN models if available
+if args.pretrained_gan and os.path.exists(os.path.join(args.models_pretraining_path, 'G.pth')):
+    G = torch.load(os.path.join(args.models_pretraining_path, 'G.pth')).to(args.device)
+    D = torch.load(os.path.join(args.models_pretraining_path, 'D.pth')).to(args.device)
     print("Loaded pre-trained GAN models.")
 else:
     G = Generator(n_classes=args.n_unlabeled_classes, dim_z=args.latent_dim, resolution=args.img_size).to(args.device)
@@ -188,14 +194,14 @@ else:
             print(f"Iter {pretrain_itr}, G_loss: {metrics['G_loss']:.4f}, D_loss_real: {metrics['D_loss_real']:.4f}, D_loss_fake: {metrics['D_loss_fake']:.4f}")
             pretrain_itr += 1
 
-        # Save models after each epoch
-        torch.save(G, os.path.join(args.pretrained_gan_path, 'G.pth'))
-        torch.save(D, os.path.join(args.pretrained_gan_path, 'D.pth'))
+        # Save models after each epoch to pretraining path
+        torch.save(G, os.path.join(args.models_pretraining_path, 'G.pth'))
+        torch.save(D, os.path.join(args.models_pretraining_path, 'D.pth'))
         print(f"Epoch {epoch + 1} completed. GAN models saved.")
 
-# Save losses
+# Save losses in pretraining path
 loss_data = {'G_losses': G_losses, 'D_losses_real': D_losses_real, 'D_losses_fake': D_losses_fake}
-np.save(os.path.join(args.results_path, 'gan_pretraining_losses.npy'), loss_data)
+np.save(os.path.join(args.pretraining_path, 'gan_pretraining_losses.npy'), loss_data)
 print("Loss data saved.")
 
 # Plot and save the loss curves
@@ -207,15 +213,17 @@ plt.xlabel("Iteration")
 plt.ylabel("Loss")
 plt.legend()
 plt.title("GAN Pretraining Loss")
-plt.savefig(os.path.join(args.results_path, 'gan_pretraining_loss_plot.png'))
+plt.savefig(os.path.join(args.pretraining_path, 'gan_pretraining_loss_plot.png'))
+
 
 # Generate sample image
 G.eval()
 with torch.no_grad():
     fixed_Gz = nn.parallel.data_parallel(G, (fixed_z, G.shared(fixed_y)))
-image_filename = f'{args.img_training_path}/fixed_sample.jpg'
+image_filename = os.path.join(args.img_pretraining_path, 'fixed_sample.jpg')
 torchvision.utils.save_image(fixed_Gz.float().cpu(), image_filename, nrow=int(fixed_Gz.shape[0] ** 0.5), normalize=True)
 print(f"Sample images saved at {image_filename}.")
+
 #     Final Model
 # --------------------
 
