@@ -312,7 +312,8 @@ for epoch in range(args.n_epochs_training):
             fake_labels = y_
 
             x = renormalize_to_standard(fake_images).to(args.device)
-            y = y_.clone().detach().to(args.device)
+            # y = y_.clone().detach().to(args.device)
+            y = torch.tensor(y_).to(args.device)
 
             feat = classifier(x)
             prob = feat2prob(feat, classifier.center)
