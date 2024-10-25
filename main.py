@@ -284,7 +284,7 @@ if args.pretrained_gan == True:
 print("Starting Main Training Loop...")
 
 # Training loop
-for epoch in range(args.n_epochs_gan_pretraining):
+for epoch in range(args.n_epochs_training):
     G_loss_epoch = 0
     D_loss_real_epoch = 0
     D_loss_fake_epoch = 0
