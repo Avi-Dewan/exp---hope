@@ -263,7 +263,6 @@ def create_two_views(img):
     std = (0.2023, 0.1994, 0.2010)
 
     transform_pipeline = transforms.Compose([
-        RandomTranslateWithReflect(4),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize(mean , std)
