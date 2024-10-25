@@ -312,7 +312,7 @@ for epoch in range(args.n_epochs_training):
             fake_labels = y_
 
             x = renormalize_to_standard(fake_images).to(args.device)
-            y = torch.tensor(y_).to(args.device)
+            y = y_.clone().detach().to(args.device)
 
             feat = classifier(x)
             prob = feat2prob(feat, classifier.center)
@@ -325,16 +325,16 @@ for epoch in range(args.n_epochs_training):
             # print(y)
             cross_entropy_loss = cls_loss(prob, y)
 
-            x, x_bar = create_two_views(fake_images)
-            x, x_bar = x.to(args.device), x_bar.to(args.device)
-            feat = classifier(x)
-            feat_bar = classifier(x_bar)
-            prob = feat2prob(feat, classifier.center)
-            prob_bar = feat2prob(feat_bar, classifier.center)
+            # x, x_bar = create_two_views(fake_images)
+            # x, x_bar = x.to(args.device), x_bar.to(args.device)
+            # feat = classifier(x)
+            # feat_bar = classifier(x_bar)
+            # prob = feat2prob(feat, classifier.center)
+            # prob_bar = feat2prob(feat_bar, classifier.center)
 
-            consistency_loss = F.mse_loss(prob, prob_bar)
+            # consistency_loss = F.mse_loss(prob, prob_bar)
 
-            loss = cross_entropy_loss + w*consistency_loss
+            loss = cross_entropy_loss # + w*consistency_loss
             loss.backward()
             cls_optimizer.step()
         
