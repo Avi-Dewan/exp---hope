@@ -374,8 +374,8 @@ for epoch in range(args.n_epochs_training):
     # epoch_D_losses_fake.append(D_loss_fake_epoch_avg)
 
     # Save models after each epoch to pretraining path
-    torch.save(G, os.path.join(args.models_pretraining_path, 'G.pth'))
-    torch.save(D, os.path.join(args.models_pretraining_path, 'D.pth'))
+    # torch.save(G, os.path.join(args.models_pretraining_path, 'G.pth'))
+    # torch.save(D, os.path.join(args.models_pretraining_path, 'D.pth'))
     # print(f"Epoch {epoch + 1} completed. GAN models saved. G_loss: {G_loss_epoch_avg:.4f}, D_loss_real: {D_loss_real_epoch_avg:.4f}, D_loss_fake: {D_loss_fake_epoch_avg:.4f}")
     print("Epochs: ", epoch)
     test(classifier, eval_loader, args)
