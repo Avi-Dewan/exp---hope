@@ -21,6 +21,7 @@ from modules.module import feat2prob, target_distribution
 from sklearn.metrics.cluster import normalized_mutual_info_score as nmi_score
 from sklearn.metrics import adjusted_rand_score as ari_score
 from utils.util import cluster_acc
+from utils import ramps
 from data.utils import renormalize_to_standard, create_two_views
 from torch.nn import Parameter
 import matplotlib.pyplot as plt
@@ -77,6 +78,8 @@ parser.add_argument('--n_epochs_gan_pretraining', type=int, default=1)
 parser.add_argument('--cls_lr_training', type=float, default=0.05)
 parser.add_argument('--cls_momentum', type=float, default=0.9)
 parser.add_argument('--cls_weight_decay', type=float, default=1e-4)
+parser.add_argument('--rampup_length', default=5, type=int)
+parser.add_argument('--rampup_coefficient', type=float, default=10.0)
 parser.add_argument('--n_epochs_training', type=int, default=0)
 parser.add_argument('--num_D_steps', type=int, default=4)
 parser.add_argument('--num_G_steps', type=int, default=1)
@@ -283,13 +286,15 @@ if args.pretrained_gan == True:
 
 print("Starting Main Training Loop...")
 
+w = 0
+
 # Training loop
 for epoch in range(args.n_epochs_training):
     G_loss_epoch = 0
     D_loss_real_epoch = 0
     D_loss_fake_epoch = 0
     num_batches = 0
-
+    w = args.rampup_coefficient * ramps.sigmoid_rampup(epoch, args.rampup_length)
     for i, (images, _ , idx) in enumerate(tqdm(train_loader)):
 
         # Train the classifier: 
@@ -329,7 +334,7 @@ for epoch in range(args.n_epochs_training):
 
             consistency_loss = F.mse_loss(prob, prob_bar)
 
-            loss = cross_entropy_loss + consistency_loss
+            loss = cross_entropy_loss + w*consistency_loss
             loss.backward()
             cls_optimizer.step()
         
