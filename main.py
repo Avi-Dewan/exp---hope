@@ -244,12 +244,12 @@ else:
 
 
 # Generate sample image
-G.eval()
-with torch.no_grad():
-    fixed_Gz = nn.parallel.data_parallel(G, (fixed_z, G.shared(fixed_y)))
-image_filename = os.path.join(args.img_pretraining_path, 'fixed_sample.jpg')
-torchvision.utils.save_image(fixed_Gz.float().cpu(), image_filename, nrow=int(fixed_Gz.shape[0] ** 0.5), normalize=True)
-print(f"Sample images saved at {image_filename}.")
+# G.eval()
+# with torch.no_grad():
+#     fixed_Gz = nn.parallel.data_parallel(G, (fixed_z, G.shared(fixed_y)))
+# image_filename = os.path.join(args.img_pretraining_path, 'fixed_sample.jpg')
+# torchvision.utils.save_image(fixed_Gz.float().cpu(), image_filename, nrow=int(fixed_Gz.shape[0] ** 0.5), normalize=True)
+# print(f"Sample images saved at {image_filename}.")
 
 
 
