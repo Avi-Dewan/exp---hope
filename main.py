@@ -114,7 +114,7 @@ G_batch_size = args.batch_size # max ( args.G_batch_size , batch_size)
 #   Data loading
 # --------------------
 train_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split='train', aug='gan', shuffle=True, target_list=range(5, 10))
-eval_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split='train', aug=None, shuffle=False, target_list=range(0, 5))
+eval_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split='train', aug=None, shuffle=False, target_list=range(5, 10))
 # train_loader = get_simple_data_loader()
 # --------------------
 
@@ -349,34 +349,35 @@ for epoch in range(args.n_epochs_training):
         y = y.to(args.device)
 
         # Train GAN
-        metrics = train(x, y)
-        G_losses.append(metrics['G_loss'])
-        D_losses_real.append(metrics['D_loss_real'])
-        D_losses_fake.append(metrics['D_loss_fake'])
+        # metrics = train(x, y)
+        # G_losses.append(metrics['G_loss'])
+        # D_losses_real.append(metrics['D_loss_real'])
+        # D_losses_fake.append(metrics['D_loss_fake'])
 
         # print(f"Iter {pretrain_itr}, G_loss: {metrics['G_loss']:.4f}, D_loss_real: {metrics['D_loss_real']:.4f}, D_loss_fake: {metrics['D_loss_fake']:.4f}")
-        pretrain_itr += 1
+        # pretrain_itr += 1
         # Accumulate epoch losses
-        G_loss_epoch += metrics['G_loss']
-        D_loss_real_epoch += metrics['D_loss_real']
-        D_loss_fake_epoch += metrics['D_loss_fake']
+        # G_loss_epoch += metrics['G_loss']
+        # D_loss_real_epoch += metrics['D_loss_real']
+        # D_loss_fake_epoch += metrics['D_loss_fake']
 
-        num_batches += 1
+        # num_batches += 1
 
     # Calculate average losses for the epoch
-    G_loss_epoch_avg = G_loss_epoch / num_batches
-    D_loss_real_epoch_avg = D_loss_real_epoch / num_batches
-    D_loss_fake_epoch_avg = D_loss_fake_epoch / num_batches
+    # G_loss_epoch_avg = G_loss_epoch / num_batches
+    # D_loss_real_epoch_avg = D_loss_real_epoch / num_batches
+    # D_loss_fake_epoch_avg = D_loss_fake_epoch / num_batches
 
-    # Append to epoch-wise loss lists
-    epoch_G_losses.append(G_loss_epoch_avg)
-    epoch_D_losses_real.append(D_loss_real_epoch_avg)
-    epoch_D_losses_fake.append(D_loss_fake_epoch_avg)
+    # # Append to epoch-wise loss lists
+    # epoch_G_losses.append(G_loss_epoch_avg)
+    # epoch_D_losses_real.append(D_loss_real_epoch_avg)
+    # epoch_D_losses_fake.append(D_loss_fake_epoch_avg)
 
     # Save models after each epoch to pretraining path
     torch.save(G, os.path.join(args.models_pretraining_path, 'G.pth'))
     torch.save(D, os.path.join(args.models_pretraining_path, 'D.pth'))
-    print(f"Epoch {epoch + 1} completed. GAN models saved. G_loss: {G_loss_epoch_avg:.4f}, D_loss_real: {D_loss_real_epoch_avg:.4f}, D_loss_fake: {D_loss_fake_epoch_avg:.4f}")
+    # print(f"Epoch {epoch + 1} completed. GAN models saved. G_loss: {G_loss_epoch_avg:.4f}, D_loss_real: {D_loss_real_epoch_avg:.4f}, D_loss_fake: {D_loss_fake_epoch_avg:.4f}")
+    print("Epochs: ", epoch)
     test(classifier, eval_loader, args)
 
 # # Save losses in pretraining path
