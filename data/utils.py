@@ -262,17 +262,23 @@ def create_two_views(img):
     mean = (0.4914, 0.4822, 0.4465)
     std = (0.2023, 0.1994, 0.2010)
 
-    transform_pipeline = transforms.Compose([
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize(mean , std)
-    ])
-
+    # Adjust image to range [-1, 1] from [0, 1]
     mean_05 = torch.tensor([0.5, 0.5, 0.5], device=img.device).view(3, 1, 1)
     std_05 = torch.tensor([0.5, 0.5, 0.5], device=img.device).view(3, 1, 1)
+    img = img * std_05 + mean_05
 
-    img = img*std_05 + mean_05
-    
+    # Convert to PIL format if the image is a tensor
+    if isinstance(img, torch.Tensor):
+        img = transforms.ToPILImage()(img)
+
+    transform_pipeline = transforms.Compose([
+        RandomTranslateWithReflect(4),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize(mean, std)
+    ])
+
     view1 = transform_pipeline(img)
     view2 = transform_pipeline(img)
+    
     return view1, view2
