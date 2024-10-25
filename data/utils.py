@@ -254,22 +254,47 @@ def renormalize_to_standard(img_tensor):
 
 import torchvision.transforms as transforms
 
-def create_two_views(img):
-    """
-    Generate two transformed views of the input image with standard normalization.
-    """
+# def create_two_views(img):
+#     """
+#     Generate two transformed views of the input image with standard normalization.
+#     """
 
+#     mean = (0.4914, 0.4822, 0.4465)
+#     std = (0.2023, 0.1994, 0.2010)
+
+#     # Adjust image to range [-1, 1] from [0, 1]
+#     mean_05 = torch.tensor([0.5, 0.5, 0.5], device=img.device).view(3, 1, 1)
+#     std_05 = torch.tensor([0.5, 0.5, 0.5], device=img.device).view(3, 1, 1)
+#     img = img * std_05 + mean_05
+
+#     # Convert to PIL format if the image is a tensor
+#     if isinstance(img, torch.Tensor):
+#         img = transforms.ToPILImage()(img)
+
+#     transform_pipeline = transforms.Compose([
+#         RandomTranslateWithReflect(4),
+#         transforms.RandomHorizontalFlip(),
+#         transforms.ToTensor(),
+#         transforms.Normalize(mean, std)
+#     ])
+
+#     view1 = transform_pipeline(img)
+#     view2 = transform_pipeline(img)
+    
+#     return view1, view2
+
+def create_two_views(batch):
+    """
+    Generate two transformed views of each image in the batch with standard normalization.
+    """
+    
     mean = (0.4914, 0.4822, 0.4465)
     std = (0.2023, 0.1994, 0.2010)
-
-    # Adjust image to range [-1, 1] from [0, 1]
-    mean_05 = torch.tensor([0.5, 0.5, 0.5], device=img.device).view(3, 1, 1)
-    std_05 = torch.tensor([0.5, 0.5, 0.5], device=img.device).view(3, 1, 1)
-    img = img * std_05 + mean_05
-
-    # Convert to PIL format if the image is a tensor
-    if isinstance(img, torch.Tensor):
-        img = transforms.ToPILImage()(img)
+    
+    # Adjust batch to range [-1, 1] from [0, 1]
+    mean_05 = torch.tensor([0.5, 0.5, 0.5], device=batch.device).view(1, 3, 1, 1)
+    std_05 = torch.tensor([0.5, 0.5, 0.5], device=batch.device).view(1, 3, 1, 1)
+    batch = batch * std_05 + mean_05
 
     transform_pipeline = transforms.Compose([
         RandomTranslateWithReflect(4),
@@ -278,7 +303,21 @@ def create_two_views(img):
         transforms.Normalize(mean, std)
     ])
 
-    view1 = transform_pipeline(img)
-    view2 = transform_pipeline(img)
+    # Process each image in the batch
+    views1, views2 = [], []
+    for img in batch:
+        # Convert each image in the batch to PIL
+        img_pil = transforms.ToPILImage()(img)
+
+        # Apply transformations to get two views
+        view1 = transform_pipeline(img_pil)
+        view2 = transform_pipeline(img_pil)
+        
+        views1.append(view1)
+        views2.append(view2)
+
+    # Stack transformed views back into batches
+    views1 = torch.stack(views1)
+    views2 = torch.stack(views2)
     
-    return view1, view2
+    return views1, views2
