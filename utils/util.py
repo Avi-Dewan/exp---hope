@@ -116,19 +116,3 @@ def str2bool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
     
-def renormalize_to_standard(img_tensor):
-    """
-    Renormalize from (0.5, 0.5, 0.5) normalization to standard CIFAR-10 normalization.
-    """
-    mean_05 = torch.tensor([0.5, 0.5, 0.5], device=img_tensor.device).view(3, 1, 1)
-    std_05 = torch.tensor([0.5, 0.5, 0.5], device=img_tensor.device).view(3, 1, 1)
-
-    mean_std = torch.tensor([0.4914, 0.4822, 0.4465], device=img_tensor.device).view(3, 1, 1)
-    std_std = torch.tensor([0.2023, 0.1994, 0.2010], device=img_tensor.device).view(3, 1, 1)
-
-    # Undo (0.5, 0.5, 0.5) normalization back to [0, 1]
-    img_tensor = img_tensor * std_05 + mean_05
-    # Normalize to standard CIFAR-10 mean and std
-    img_tensor = (img_tensor - mean_std) / std_std
-
-    return img_tensor
