@@ -156,11 +156,10 @@ def gan_pretraining(classifier, train_loader, z_, y_, fixed_z, fixed_y, args):
     if args.pretrained_gan and os.path.exists(os.path.join(args.pretraining_path, 'G.pth')):
         G = torch.load(os.path.join(args.pretraining_path, 'G.pth')).to(args.device)
         D = torch.load(os.path.join(args.pretraining_path, 'D.pth')).to(args.device)
-        GD = G_D(G, D)
 
         print("Loaded pre-trained GAN models.")
 
-        return G, D, G_D
+        return G, D
     
     # if args.pretrained_gan and os.path.exists(args.pretrained_G) and os.path.exists(args.pretrained_D):
     #     G = torch.load(args.pretrained_G).to(args.device)
