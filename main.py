@@ -228,7 +228,9 @@ for epoch in range(args.n_epochs_training):
             _, pred = prob.max(1)
             print(prob.shape)
             print(y.shape)
-            cross_entropy_loss = cls_loss(prob.log(), y)
+            prob = prob.clamp(min=1e-9, max=1 - 1e-9)
+            cross_entropy_loss = cls_loss(prob.log(), y)  # Take the log for compatibility
+
 
             # x, x_bar = create_two_views(fake_images)
             # x, x_bar = x.to(args.device), x_bar.to(args.device)
