@@ -263,7 +263,7 @@ for epoch in range(args.n_epochs_training):
         D_losses_real.append(metrics['D_loss_real'])
         D_losses_fake.append(metrics['D_loss_fake'])
 
-        print(f"Iter {pretrain_itr}, G_loss: {metrics['G_loss']:.4f}, D_loss_real: {metrics['D_loss_real']:.4f}, D_loss_fake: {metrics['D_loss_fake']:.4f}")
+        # print(f"Iter {pretrain_itr}, G_loss: {metrics['G_loss']:.4f}, D_loss_real: {metrics['D_loss_real']:.4f}, D_loss_fake: {metrics['D_loss_fake']:.4f}")
         pretrain_itr += 1
         # Accumulate epoch losses
         G_loss_epoch += metrics['G_loss']
