@@ -226,6 +226,8 @@ for epoch in range(args.n_epochs_training):
             feat = classifier(x)
             prob = feat2prob(feat, classifier.center)
             _, pred = prob.max(1)
+            print(prob.shape)
+            print(y.shape)
             cross_entropy_loss = cls_loss(prob, y)
 
             # x, x_bar = create_two_views(fake_images)
