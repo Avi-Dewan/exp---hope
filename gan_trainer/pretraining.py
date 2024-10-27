@@ -151,9 +151,6 @@ import torchvision
 
 def gan_pretraining(classifier, train_loader, z_, y_, fixed_z, fixed_y, args):
 
-    os.makedirs(args.pretraining_path, exist_ok=True)
-    args.img_pretraining_path = os.path.join(args.pretraining_path, 'images')
-    os.makedirs(args.img_pretraining_path, exist_ok=True)
     
     # Load pre-trained GAN models if available
     if args.pretrained_gan and os.path.exists(os.path.join(args.pretraining_path, 'G.pth')):
@@ -169,6 +166,10 @@ def gan_pretraining(classifier, train_loader, z_, y_, fixed_z, fixed_y, args):
     #     G = torch.load(args.pretrained_G).to(args.device)
     #     D = torch.load(args.pretrained_D).to(args.device)
     #     print("Loaded pre-trained GAN models.")
+
+    os.makedirs(args.pretraining_path, exist_ok=True)
+    args.img_pretraining_path = os.path.join(args.pretraining_path, 'images')
+    os.makedirs(args.img_pretraining_path, exist_ok=True)
 
     G = Generator(n_classes=args.n_unlabeled_classes, dim_z=args.latent_dim, resolution=args.img_size).to(args.device)
     D = Discriminator(n_classes=args.n_unlabeled_classes, resolution=args.img_size).to(args.device)
