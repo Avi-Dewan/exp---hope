@@ -172,7 +172,7 @@ GD = G_D(G, D)
 train = train_fns.GAN_training_function(G, D, GD, z_, y_, args.batch_size, args.num_D_steps, num_D_accumulations=1, num_G_accumulations=1)
 
 cls_optimizer = optim.SGD(classifier.parameters(), lr=args.cls_lr_training, momentum=args.cls_momentum, weight_decay=args.cls_weight_decay)
-cls_loss = nn.CrossEntropyLoss().to(args.device)
+CE_loss = nn.CrossEntropyLoss().to(args.device)
 
 print("Starting Main Training Loop...")
 
@@ -225,12 +225,7 @@ for epoch in range(args.n_epochs_training):
 
             feat = classifier(x)
             prob = feat2prob(feat, classifier.center)
-            _, pred = prob.max(1)
-            print(prob.shape)
-            print(y.shape)
-            prob = prob.clamp(min=1e-9, max=1 - 1e-9)
-            cross_entropy_loss = cls_loss(prob.log(), y)  # Take the log for compatibility
-
+            cross_entropy_loss = CE_loss(prob, y)
 
             # x, x_bar = create_two_views(fake_images)
             # x, x_bar = x.to(args.device), x_bar.to(args.device)
