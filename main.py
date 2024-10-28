@@ -288,8 +288,8 @@ for epoch in range(args.n_epochs_training):
     
     # Save models at each interval
     if (epoch == args.n_epochs_training-1 or ((epoch+1) % args.save_interval == 0)):
-        torch.save(G, os.path.join(args.models_training_path, 'G.pth'))
-        torch.save(D, os.path.join(args.models_training_path, 'D.pth'))
+        torch.save(G.state_dict(), os.path.join(args.models_training_path, 'G.pth'))
+        torch.save(D.state_dict(), os.path.join(args.models_training_path, 'D.pth'))
 
         print(f"GAN model saved at {epoch+1}")
 

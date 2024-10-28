@@ -44,7 +44,7 @@ def getPsedoLabels(model, train_loader, args):
 
 def classifier_pretraining(args):
     # Classifier pretraining on source data
-    model_dict = torch.load(args.cls_pretraining_path, map_location=args.device)
+    model_dict = torch.load(args.cls_pretraining_path, map_location=args.device, weights_only=False)
     model = ResNet(BasicBlock, [2,2,2,2], args.n_unlabeled_classes).to(args.device)
     model.load_state_dict(model_dict['state_dict'], strict=False)
     model.center = Parameter(model_dict['center'])
@@ -151,11 +151,14 @@ import torchvision
 
 def gan_pretraining(classifier, train_loader, z_, y_, fixed_z, fixed_y, args):
 
-    
-    # Load pre-trained GAN models if available
+    G = Generator(n_classes=args.n_unlabeled_classes, dim_z=args.latent_dim, resolution=args.img_size).to(args.device)
+    D = Discriminator(n_classes=args.n_unlabeled_classes, resolution=args.img_size).to(args.device)
+
+
+    # Load the state_dict into the initialized models if pretrained models are available
     if args.pretrained_gan and os.path.exists(os.path.join(args.pretraining_path, 'G.pth')):
-        G = torch.load(os.path.join(args.pretraining_path, 'G.pth')).to(args.device)
-        D = torch.load(os.path.join(args.pretraining_path, 'D.pth')).to(args.device)
+        G.load_state_dict(torch.load(os.path.join(args.pretraining_path, 'G.pth')))
+        D.load_state_dict(torch.load(os.path.join(args.pretraining_path, 'D.pth')))
 
         print("Loaded pre-trained GAN models.")
 
@@ -170,10 +173,10 @@ def gan_pretraining(classifier, train_loader, z_, y_, fixed_z, fixed_y, args):
     args.img_pretraining_path = os.path.join(args.pretraining_path, 'images')
     os.makedirs(args.img_pretraining_path, exist_ok=True)
 
-    G = Generator(n_classes=args.n_unlabeled_classes, dim_z=args.latent_dim, resolution=args.img_size).to(args.device)
-    D = Discriminator(n_classes=args.n_unlabeled_classes, resolution=args.img_size).to(args.device)
-    GD = G_D(G, D)
     print("Training GAN models from scratch.")
+
+    
+    GD = G_D(G, D)
 
     # GAN training function
     train = train_fns.GAN_training_function(G, D, GD, z_, y_, args.batch_size, args.num_D_steps, num_D_accumulations=1, num_G_accumulations=1)
@@ -236,8 +239,10 @@ def gan_pretraining(classifier, train_loader, z_, y_, fixed_z, fixed_y, args):
         # Save models after each interval
         if(epoch == args.n_epochs_gan_pretraining-1 or ((epoch+1) % args.pretrain_save_interval == 0)):
 
-            torch.save(G, os.path.join(args.models_pretraining_path, 'G.pth'))
-            torch.save(D, os.path.join(args.models_pretraining_path, 'D.pth'))
+            # Save only the state_dict of G and D
+            torch.save(G.state_dict(), os.path.join(args.models_pretraining_path, 'G.pth'))
+            torch.save(D.state_dict(), os.path.join(args.models_pretraining_path, 'D.pth'))
+
 
             print(f"GAN model saved at epoch {epoch+1}")
 
