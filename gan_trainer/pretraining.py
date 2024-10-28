@@ -172,7 +172,7 @@ def gan_pretraining(classifier, train_loader, z_, y_, fixed_z, fixed_y, args):
     os.makedirs(args.pretraining_path, exist_ok=True)
     args.img_pretraining_path = os.path.join(args.pretraining_path, 'images')
     os.makedirs(args.img_pretraining_path, exist_ok=True)
-    args.models_pretraining_path = os.path.join(args.pretraining_path, 'images')
+    args.models_pretraining_path = os.path.join(args.pretraining_path, 'models')
     os.makedirs(args.models_pretraining_path, exist_ok=True)
 
     print("Training GAN models from scratch.")
