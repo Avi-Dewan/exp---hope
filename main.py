@@ -284,7 +284,7 @@ for epoch in range(args.n_epochs_training):
     epoch_D_losses_fake.append(D_loss_fake_epoch_avg)
     epoch_C_losses.append(C_loss_epoch_avg)
 
-    print(f"Epoch {epoch + 1}/{args.n_epochs_training}:   G_loss: {G_loss_epoch_avg:.4f}, D_loss_real: {D_loss_real_epoch_avg:.4f}, D_loss_fake: {D_loss_fake_epoch_avg:.4f}, C_loss: {C_loss_epoch_avg:.4f}")
+    print(f"Epoch {epoch + 1}/{args.n_epochs_training}:\t  G_loss: {G_loss_epoch_avg:.4f}, D_loss_real: {D_loss_real_epoch_avg:.4f}, D_loss_fake: {D_loss_fake_epoch_avg:.4f}, C_loss: {C_loss_epoch_avg:.4f}")
     
     # Save models at each interval
     if (epoch == args.n_epochs_training-1 or ((epoch+1) % args.save_interval == 0)):

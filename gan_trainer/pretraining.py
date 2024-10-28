@@ -172,10 +172,12 @@ def gan_pretraining(classifier, train_loader, z_, y_, fixed_z, fixed_y, args):
     os.makedirs(args.pretraining_path, exist_ok=True)
     args.img_pretraining_path = os.path.join(args.pretraining_path, 'images')
     os.makedirs(args.img_pretraining_path, exist_ok=True)
+    args.models_pretraining_path = os.path.join(args.pretraining_path, 'images')
+    os.makedirs(args.models_pretraining_path, exist_ok=True)
 
     print("Training GAN models from scratch.")
 
-    
+
     GD = G_D(G, D)
 
     # GAN training function
@@ -234,7 +236,7 @@ def gan_pretraining(classifier, train_loader, z_, y_, fixed_z, fixed_y, args):
         epoch_D_losses_real.append(D_loss_real_epoch_avg)
         epoch_D_losses_fake.append(D_loss_fake_epoch_avg)
 
-        print(f"Epoch {epoch + 1}/{args.n_epochs_gan_pretraining}G_loss: {G_loss_epoch_avg:.4f}, D_loss_real: {D_loss_real_epoch_avg:.4f}, D_loss_fake: {D_loss_fake_epoch_avg:.4f}")
+        print(f"Epoch {epoch + 1}/{args.n_epochs_gan_pretraining}:\tG_loss: {G_loss_epoch_avg:.4f}, D_loss_real: {D_loss_real_epoch_avg:.4f}, D_loss_fake: {D_loss_fake_epoch_avg:.4f}")
 
         # Save models after each interval
         if(epoch == args.n_epochs_gan_pretraining-1 or ((epoch+1) % args.pretrain_save_interval == 0)):
