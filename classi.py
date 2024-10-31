@@ -159,9 +159,6 @@ with torch.no_grad():
     else:
         fixed_Gz = nn.parallel.data_parallel(G, (fixed_z, G.shared(fixed_y)))  # For multiple GPUs
 
-image_filename = os.path.join(args.img_training_path, f'fixed_sample0.jpg')
-torchvision.utils.save_image(fixed_Gz.float().cpu(), image_filename, nrow=int(fixed_Gz.shape[0] ** 0.5), normalize=True)
-print(f"Sample images saved at {image_filename}.")
 # --------------------
 
 
@@ -180,154 +177,72 @@ CE_loss = nn.CrossEntropyLoss().to(args.device)
 
 print("Starting Main Training Loop...")
 
-w = 0
 
-# Initialize tracking variables for itertaion wise
-pretrain_itr = 1
-G_losses = []
-D_losses_real = []
-D_losses_fake = []
-
-# Initialize tracking variables for epoch-wise losses
-epoch_G_losses = []
-epoch_D_losses_real = []
-epoch_D_losses_fake = []
 epoch_C_losses = []
 
 # Initialize lists to store classfier metrics and their corresponding evaluation epochs
 eval_epochs, acc_list, nmi_list, ari_list = [], [], [], []
 
+# Only train the classifier
 
-# Training loop
+
 for epoch in range(args.n_epochs_training):
-    G_loss_epoch = 0
-    D_loss_real_epoch = 0
-    D_loss_fake_epoch = 0
-    C_loss_epoch = 0
-    num_batches = 0
+    classifier.train()
+    G.eval()
+    cls_optimizer.zero_grad()
 
-    w = args.rampup_coefficient * ramps.sigmoid_rampup(epoch, args.rampup_length)
+    z_.sample_()
+    y_.sample_()
+    with torch.no_grad():
+        if args.device == torch.device('cpu'):
+            fake_images = G(z_, G.shared(y_))  # No data parallelism for CPU or single GPU
+        else:
+            fake_images = nn.parallel.data_parallel(G, (z_, G.shared(y_)))  # For multiple GPUs
 
-    for i, (images, _ , idx) in enumerate(tqdm(train_loader)):
+        # fake_images = nn.parallel.data_parallel(G, (z_, G.shared(y_)))
+        
+    fake_labels = y_
 
-        # Train the classifier: 
-        classifier.train()
-        G.eval()
+    fake_images = torch.tensor(fake_images).to(args.device)
+    y = torch.tensor(y_).to(args.device)
 
-        for step_index in range(args.num_C_steps):
+    x = renormalize_to_standard(fake_images).to(args.device)
+    # y = y_.clone().detach().to(args.device)
 
-            cls_optimizer.zero_grad()
+    feat = classifier(x)
+    prob = feat2prob(feat, classifier.center)
+    cross_entropy_loss = CE_loss(prob.log(), y)
 
-            z_.sample_()
-            y_.sample_()
-            with torch.no_grad():
-                if args.device == torch.device('cpu'):
-                    fake_images = G(z_, G.shared(y_))  # No data parallelism for CPU or single GPU
-                else:
-                    fake_images = nn.parallel.data_parallel(G, (z_, G.shared(y_)))  # For multiple GPUs
+    # x, x_bar = create_two_views(fake_images)
+    # x, x_bar = x.to(args.device), x_bar.to(args.device)
+    # feat = classifier(x)
+    # feat_bar = classifier(x_bar)
+    # prob = feat2prob(feat, classifier.center)
+    # prob_bar = feat2prob(feat_bar, classifier.center)
 
-                # fake_images = nn.parallel.data_parallel(G, (z_, G.shared(y_)))
-                
-            fake_labels = y_
+    # consistency_loss = F.mse_loss(prob, prob_bar)
 
-            fake_images = torch.tensor(fake_images).to(args.device)
-            y = torch.tensor(y_).to(args.device)
+    cls_loss = cross_entropy_loss # + w*consistency_loss
+    cls_loss.backward()
+    cls_optimizer.step()
 
-            x = renormalize_to_standard(fake_images).to(args.device)
-            # y = y_.clone().detach().to(args.device)
 
-            feat = classifier(x)
-            prob = feat2prob(feat, classifier.center)
-            cross_entropy_loss = CE_loss(prob.log(), y)
+    epoch_C_losses.append(float(cls_loss.item()))
 
-            # x, x_bar = create_two_views(fake_images)
-            # x, x_bar = x.to(args.device), x_bar.to(args.device)
-            # feat = classifier(x)
-            # feat_bar = classifier(x_bar)
-            # prob = feat2prob(feat, classifier.center)
-            # prob_bar = feat2prob(feat_bar, classifier.center)
+    acc, nmi, ari = test(classifier, eval_loader, args)
+    eval_epochs.append(epoch)
+    acc_list.append(acc)
+    nmi_list.append(nmi)
+    ari_list.append(ari)
 
-            # consistency_loss = F.mse_loss(prob, prob_bar)
-
-            cls_loss = cross_entropy_loss # + w*consistency_loss
-            cls_loss.backward()
-            cls_optimizer.step()
-
-            # Accumulate loss per steps, per epoch
-            C_loss_epoch += float(cls_loss.item())
-
-        # Train the GAN
-        classifier.eval()
-
-        x = images.to(args.device)
-        with torch.no_grad():
-            x_classifier = renormalize_to_standard(x)
-            feat = classifier(x_classifier)
-            prob = feat2prob(feat, classifier.center)
-            _, y = prob.max(1)
-
-        y = y.to(args.device)
-
-        # GAN training step
-        metrics = train(x, y)
-
-        # Track per iteration losses
-        G_losses.append(metrics['G_loss'])
-        D_losses_real.append(metrics['D_loss_real'])
-        D_losses_fake.append(metrics['D_loss_fake'])
-
-        # print(f"Iter {pretrain_itr}, G_loss: {metrics['G_loss']:.4f}, D_loss_real: {metrics['D_loss_real']:.4f}, D_loss_fake: {metrics['D_loss_fake']:.4f}")
-        pretrain_itr += 1
-        # Accumulate epoch losses
-        G_loss_epoch += metrics['G_loss']
-        D_loss_real_epoch += metrics['D_loss_real']
-        D_loss_fake_epoch += metrics['D_loss_fake']
-
-        num_batches += 1
-
-    # Calculate average losses for the epoch
-    G_loss_epoch_avg = G_loss_epoch / num_batches
-    D_loss_real_epoch_avg = D_loss_real_epoch / num_batches
-    D_loss_fake_epoch_avg = D_loss_fake_epoch / num_batches
-    C_loss_epoch_avg = C_loss_epoch / (num_batches*args.num_C_steps)
-
-    # Append to epoch-wise loss lists
-    epoch_G_losses.append(G_loss_epoch_avg)
-    epoch_D_losses_real.append(D_loss_real_epoch_avg)
-    epoch_D_losses_fake.append(D_loss_fake_epoch_avg)
-    epoch_C_losses.append(C_loss_epoch_avg)
-
-    print(f"Epoch {epoch + 1}/{args.n_epochs_training}:\t  G_loss: {G_loss_epoch_avg:.4f}, D_loss_real: {D_loss_real_epoch_avg:.4f}, D_loss_fake: {D_loss_fake_epoch_avg:.4f}, C_loss: {C_loss_epoch_avg:.4f}")
+    print(f"Epoch {epoch + 1}/{args.n_epochs_training}:\t  C_loss: {float(cls_loss.item()):.4f}")
     
-    # Save models at each interval
-    if (epoch == args.n_epochs_training-1 or ((epoch+1) % args.save_interval == 0)):
-        torch.save(G.state_dict(), os.path.join(args.models_training_path, 'G.pth'))
-        torch.save(D.state_dict(), os.path.join(args.models_training_path, 'D.pth'))
-
-        print(f"GAN model saved at {epoch+1}")
-
-        # Generate sample image
-        G.eval()
-        with torch.no_grad():
-            if args.device == torch.device('cpu'):
-                fixed_Gz = G(fixed_z, G.shared(fixed_y))  # No data parallelism for CPU or single GPU
-            else:
-                fixed_Gz = nn.parallel.data_parallel(G, (fixed_z, G.shared(fixed_y)))  # For multiple GPUs
-
-        image_filename = os.path.join(args.img_training_path, f'fixed_sample{epoch + 1}.jpg')
-        torchvision.utils.save_image(fixed_Gz.float().cpu(), image_filename, nrow=int(fixed_Gz.shape[0] ** 0.5), normalize=True)
-        print(f"Sample images saved at {image_filename}.")
+    print('Test acc {:.4f}, nmi {:.4f}, ari {:.4f}'.format(acc, nmi, ari))
 
 
-        acc, nmi, ari = test(classifier, eval_loader, args)
-        eval_epochs.append(epoch)
-        acc_list.append(acc)
-        nmi_list.append(nmi)
-        ari_list.append(ari)
-        print('Test acc {:.4f}, nmi {:.4f}, ari {:.4f}'.format(acc, nmi, ari))
-
+       
 print("Traing Done.\n Saving losses and metrics data...")
-# --------------------
+
 
 
 
@@ -336,48 +251,17 @@ print("Traing Done.\n Saving losses and metrics data...")
 #   Loss and metrics plot
 # --------------------------
 
-# Save losses in training path
-loss_data = {'G_losses': G_losses, 'D_losses_real': D_losses_real, 'D_losses_fake': D_losses_fake}
-np.save(os.path.join(args.training_path, 'gan_training_iter_losses.npy'), loss_data)
-print("Loss data saved.")
 
-# Plot and save the loss curves
-plt.figure()
-plt.plot(G_losses, label="G_loss")
-plt.plot(D_losses_real, label="D_loss_real")
-plt.plot(D_losses_fake, label="D_loss_fake")
-plt.xlabel("Iteration")
-plt.ylabel("Loss")
-plt.legend()
-plt.title("GAN Training Loss (Iter-wise)")
-plt.savefig(os.path.join(args.training_path, 'gan_training_iter_loss_plot.png'))
-
-# Save epoch-wise loss data
-epoch_loss_data = {'epoch_G_losses': epoch_G_losses, 'epoch_D_losses_real': epoch_D_losses_real, 'epoch_D_losses_fake': epoch_D_losses_fake, 'epoch_C_losses': epoch_C_losses}
-np.save(os.path.join(args.training_path, 'gan_training_epoch_losses.npy'), epoch_loss_data)
-print("Epoch-wise loss data saved.")
 
 # Plot and save the epoch-wise loss curves
 plt.figure()
-plt.plot(epoch_G_losses, label="G_loss")
-plt.plot(epoch_D_losses_real, label="D_loss_real")
-plt.plot(epoch_D_losses_fake, label="D_loss_fake")
 plt.plot(epoch_C_losses, label="C_loss")
 plt.xlabel("Epoch")
 plt.ylabel("Loss")
 plt.legend()
-plt.title("GAN Training Loss (Epoch-wise)")
-plt.savefig(os.path.join(args.training_path, 'gan_training_epoch_loss_plot.png'))
+plt.title("Training Loss (Epoch-wise)")
+plt.savefig(os.path.join(args.training_path, 'training_epoch_loss_plot.png'))
 
-# Save metrics along with the evaluation epochs
-epoch_metric_data = {
-    'eval_epochs': eval_epochs,
-    'epoch_acc': acc_list,
-    'epoch_nmi': nmi_list,
-    'epoch_ari': ari_list
-}
-np.save(os.path.join(args.training_path, 'gan_training_eval_metrics.npy'), epoch_metric_data)
-print("Evaluation metrics data saved.")
 
 # Plot and save the evaluation metrics curves
 plt.figure()
@@ -391,8 +275,6 @@ plt.title("Classifier Evaluation Metrics (Periodically)")
 plt.savefig(os.path.join(args.training_path, 'classifier_evaluation_metrics_plot.png'))
 
 # --------------------
-
-
 
 # --------------------
 #     Final Model
