@@ -177,19 +177,21 @@ CE_loss = nn.CrossEntropyLoss().to(args.device)
 
 print("Starting Main Training Loop...")
 
-
+epoch_CE_losses = []
+epoch_Consistency_losses = []
 epoch_C_losses = []
 
 # Initialize lists to store classfier metrics and their corresponding evaluation epochs
 eval_epochs, acc_list, nmi_list, ari_list = [], [], [], []
 
 # Only train the classifier
-
+w = 0
 
 for epoch in range(args.n_epochs_training):
     classifier.train()
     G.eval()
     cls_optimizer.zero_grad()
+    w = args.rampup_coefficient * ramps.sigmoid_rampup(epoch, args.rampup_length)
 
     z_.sample_()
     y_.sample_()
@@ -213,21 +215,23 @@ for epoch in range(args.n_epochs_training):
     prob = feat2prob(feat, classifier.center)
     cross_entropy_loss = CE_loss(prob.log(), y)
 
-    # x, x_bar = create_two_views(fake_images)
-    # x, x_bar = x.to(args.device), x_bar.to(args.device)
-    # feat = classifier(x)
-    # feat_bar = classifier(x_bar)
-    # prob = feat2prob(feat, classifier.center)
-    # prob_bar = feat2prob(feat_bar, classifier.center)
+    x, x_bar = create_two_views(fake_images)
+    x, x_bar = x.to(args.device), x_bar.to(args.device)
+    feat = classifier(x)
+    feat_bar = classifier(x_bar)
+    prob = feat2prob(feat, classifier.center)
+    prob_bar = feat2prob(feat_bar, classifier.center)
 
-    # consistency_loss = F.mse_loss(prob, prob_bar)
+    consistency_loss = F.mse_loss(prob, prob_bar)
 
-    cls_loss = cross_entropy_loss # + w*consistency_loss
+    cls_loss = cross_entropy_loss + w*consistency_loss
     cls_loss.backward()
     cls_optimizer.step()
 
 
     epoch_C_losses.append(float(cls_loss.item()))
+    epoch_CE_losses.append(float(cross_entropy_loss.item()))
+    epoch_Consistency_losses.append(float(consistency_loss.item()))
 
     acc, nmi, ari = test(classifier, eval_loader, args)
     eval_epochs.append(epoch)
@@ -256,6 +260,8 @@ print("Traing Done.\n Saving losses and metrics data...")
 # Plot and save the epoch-wise loss curves
 plt.figure()
 plt.plot(epoch_C_losses, label="C_loss")
+plt.plot(epoch_CE_losses, label="CE_loss")
+plt.plot(epoch_Consistency_losses, label="Consistency_loss")
 plt.xlabel("Epoch")
 plt.ylabel("Loss")
 plt.legend()
