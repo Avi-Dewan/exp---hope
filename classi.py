@@ -239,7 +239,7 @@ for epoch in range(args.n_epochs_training):
     nmi_list.append(nmi)
     ari_list.append(ari)
 
-    print(f"Epoch {epoch + 1}/{args.n_epochs_training}:\t  C_loss: {float(cls_loss.item()):.4f}")
+    print(f"Epoch {epoch + 1}/{args.n_epochs_training}:\t  CE_loss: {float(cross_entropy_loss.item()):.4f}, Consistency_loss: {float(consistency_loss.item()):.4f}, C_loss: {float(cls_loss.item()):.4f}")
     
     print('Test acc {:.4f}, nmi {:.4f}, ari {:.4f}'.format(acc, nmi, ari))
 
