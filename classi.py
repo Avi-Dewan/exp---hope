@@ -177,7 +177,7 @@ CE_loss = nn.CrossEntropyLoss().to(args.device)
 
 print("Starting Main Training Loop...")
 
-epoch_CE_losses = []
+# epoch_CE_losses = []
 epoch_Consistency_losses = []
 epoch_C_losses = []
 
@@ -203,17 +203,17 @@ for epoch in range(args.n_epochs_training):
 
         # fake_images = nn.parallel.data_parallel(G, (z_, G.shared(y_)))
         
-    fake_labels = y_
+    # fake_labels = y_
 
-    # fake_images = torch.tensor(fake_images).to(args.device)
-    y = torch.tensor(y_).to(args.device)
+    # # fake_images = torch.tensor(fake_images).to(args.device)
+    # y = torch.tensor(y_).to(args.device)
 
-    x = renormalize_to_standard(fake_images).to(args.device)
-    # y = y_.clone().detach().to(args.device)
+    # x = renormalize_to_standard(fake_images).to(args.device)
+    # # y = y_.clone().detach().to(args.device)
 
-    feat = classifier(x)
-    prob = feat2prob(feat, classifier.center)
-    cross_entropy_loss = CE_loss(prob.log(), y)
+    # feat = classifier(x)
+    # prob = feat2prob(feat, classifier.center)
+    # cross_entropy_loss = CE_loss(prob.log(), y)
 
     x, x_bar = create_two_views(fake_images)
     x, x_bar = x.to(args.device), x_bar.to(args.device)
@@ -225,14 +225,14 @@ for epoch in range(args.n_epochs_training):
     consistency_loss = F.mse_loss(prob, prob_bar)
 
     # cls_loss = cross_entropy_loss + w*consistency_loss
-    cls_loss = cross_entropy_loss + consistency_loss
-    # cls_loss = consistency_loss
+    # cls_loss = cross_entropy_loss + consistency_loss
+    cls_loss = consistency_loss
     cls_loss.backward()
     cls_optimizer.step()
 
 
     epoch_C_losses.append(float(cls_loss.item()))
-    epoch_CE_losses.append(float(cross_entropy_loss.item()))
+    # epoch_CE_losses.append(float(cross_entropy_loss.item()))
     epoch_Consistency_losses.append(float(consistency_loss.item()))
 
     acc, nmi, ari = test(classifier, eval_loader, args)
@@ -241,13 +241,16 @@ for epoch in range(args.n_epochs_training):
     nmi_list.append(nmi)
     ari_list.append(ari)
 
-    print(f"Epoch {epoch + 1}/{args.n_epochs_training}:\t  CE_loss: {float(cross_entropy_loss.item()):.4f}, Consistency_loss: {float(consistency_loss.item()):.4f}, C_loss: {float(cls_loss.item()):.4f}")
+    # print(f"Epoch {epoch + 1}/{args.n_epochs_training}:\t  CE_loss: {float(cross_entropy_loss.item()):.4f}, Consistency_loss: {float(consistency_loss.item()):.4f}, C_loss: {float(cls_loss.item()):.4f}")
+
+    print(f"Epoch {epoch + 1}/{args.n_epochs_training}:\t Consistency_loss: {float(consistency_loss.item()):.4f}, C_loss: {float(cls_loss.item()):.4f}")
+
     
     print('Test acc {:.4f}, nmi {:.4f}, ari {:.4f}'.format(acc, nmi, ari))
 
 
        
-print("Traing Done.\n Saving losses and metrics data...")
+print("Training Done.\n Saving losses and metrics data...")
 
 
 
@@ -262,7 +265,7 @@ print("Traing Done.\n Saving losses and metrics data...")
 # Plot and save the epoch-wise loss curves
 plt.figure()
 plt.plot(epoch_C_losses, label="C_loss")
-plt.plot(epoch_CE_losses, label="CE_loss")
+# plt.plot(epoch_CE_losses, label="CE_loss")
 plt.plot(epoch_Consistency_losses, label="Consistency_loss")
 plt.xlabel("Epoch")
 plt.ylabel("Loss")
