@@ -154,14 +154,14 @@ G, D = gan_pretraining(classifier, train_loader, z_, y_, fixed_z, fixed_y, args)
 # Generate and save First sample image
 G.eval()
 with torch.no_grad():
-    if args.device == torch.device('cpu') or torch.cuda.device_count() == 1:
+    if args.device == torch.device('cpu'):
         fixed_Gz = G(fixed_z, G.shared(fixed_y))  # No data parallelism for CPU or single GPU
     else:
         fixed_Gz = nn.parallel.data_parallel(G, (fixed_z, G.shared(fixed_y)))  # For multiple GPUs
 
-# image_filename = os.path.join(args.img_training_path, f'fixed_sample0.jpg')
-# torchvision.utils.save_image(fixed_Gz.float().cpu(), image_filename, nrow=int(fixed_Gz.shape[0] ** 0.5), normalize=True)
-# print(f"Sample images saved at {image_filename}.")
+image_filename = os.path.join(args.img_training_path, f'fixed_sample0.jpg')
+torchvision.utils.save_image(fixed_Gz.float().cpu(), image_filename, nrow=int(fixed_Gz.shape[0] ** 0.5), normalize=True)
+print(f"Sample images saved at {image_filename}.")
 # --------------------
 
 
@@ -220,7 +220,7 @@ for epoch in range(args.n_epochs_training):
             z_.sample_()
             y_.sample_()
             with torch.no_grad():
-                if args.device == torch.device('cpu') or torch.cuda.device_count() == 1:
+                if args.device == torch.device('cpu'):
                     fake_images = G(z_, G.shared(y_))  # No data parallelism for CPU or single GPU
                 else:
                     fake_images = nn.parallel.data_parallel(G, (z_, G.shared(y_)))  # For multiple GPUs
