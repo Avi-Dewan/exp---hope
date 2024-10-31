@@ -85,7 +85,7 @@ parser.add_argument('--cls_momentum', type=float, default=0.9)
 parser.add_argument('--cls_weight_decay', type=float, default=1e-4)
 parser.add_argument('--rampup_length', default=5, type=int)
 parser.add_argument('--rampup_coefficient', type=float, default=10.0)
-parser.add_argument('--n_epochs_training', type=int, default=0)
+parser.add_argument('--n_epochs_training', type=int, default=1)
 parser.add_argument('--num_D_steps', type=int, default=4)
 parser.add_argument('--num_G_steps', type=int, default=1)
 parser.add_argument('--num_C_steps', type=int, default=4)
@@ -93,7 +93,7 @@ parser.add_argument('--save_interval', type=int, default=50)
 
 # Paths
 parser.add_argument('--results_path', type=str, default='./results')
-parser.add_argument('--pretraining_path', type=str, default='./results/pretraining')
+parser.add_argument('--pretraining_path', type=str, default='./results/pretraining/models')
 parser.add_argument('--training_path', type=str, default='./results/training')
 parser.add_argument('--cls_pretraining_path', type=str, default='./pretrained/resnet18.pth')
 
@@ -125,10 +125,10 @@ eval_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split=
 # --------------------
 
 classifier = classifier_pretraining(args)
-init_acc, init_nmi, init_ari = test(classifier, eval_loader, args)
+# init_acc, init_nmi, init_ari = test(classifier, eval_loader, args)
 
-print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
-# --------------------
+# print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
+# # --------------------
 
 
 
@@ -154,10 +154,14 @@ G, D = gan_pretraining(classifier, train_loader, z_, y_, fixed_z, fixed_y, args)
 # Generate and save First sample image
 G.eval()
 with torch.no_grad():
-    fixed_Gz = nn.parallel.data_parallel(G, (fixed_z, G.shared(fixed_y)))
-image_filename = os.path.join(args.img_training_path, f'fixed_sample0.jpg')
-torchvision.utils.save_image(fixed_Gz.float().cpu(), image_filename, nrow=int(fixed_Gz.shape[0] ** 0.5), normalize=True)
-print(f"Sample images saved at {image_filename}.")
+    if args.device == torch.device('cpu') or torch.cuda.device_count() == 1:
+        fixed_Gz = G(fixed_z, G.shared(fixed_y))  # No data parallelism for CPU or single GPU
+    else:
+        fixed_Gz = nn.parallel.data_parallel(G, (fixed_z, G.shared(fixed_y)))  # For multiple GPUs
+
+# image_filename = os.path.join(args.img_training_path, f'fixed_sample0.jpg')
+# torchvision.utils.save_image(fixed_Gz.float().cpu(), image_filename, nrow=int(fixed_Gz.shape[0] ** 0.5), normalize=True)
+# print(f"Sample images saved at {image_filename}.")
 # --------------------
 
 
@@ -216,16 +220,24 @@ for epoch in range(args.n_epochs_training):
             z_.sample_()
             y_.sample_()
             with torch.no_grad():
-                fake_images = nn.parallel.data_parallel(G, (z_, G.shared(y_)))
+                if args.device == torch.device('cpu') or torch.cuda.device_count() == 1:
+                    fake_images = G(z_, G.shared(y_))  # No data parallelism for CPU or single GPU
+                else:
+                    fake_images = nn.parallel.data_parallel(G, (z_, G.shared(y_)))  # For multiple GPUs
+
+                # fake_images = nn.parallel.data_parallel(G, (z_, G.shared(y_)))
+                
             fake_labels = y_
+
+            # fake_images = torch.tensor(fake_images).to(args.device)
+            y = torch.tensor(y_).to(args.device)
 
             x = renormalize_to_standard(fake_images).to(args.device)
             # y = y_.clone().detach().to(args.device)
-            y = torch.tensor(y_).to(args.device)
 
             feat = classifier(x)
             prob = feat2prob(feat, classifier.center)
-            cross_entropy_loss = CE_loss(prob, y)
+            cross_entropy_loss = CE_loss(prob.log(), y)
 
             # x, x_bar = create_two_views(fake_images)
             # x, x_bar = x.to(args.device), x_bar.to(args.device)
@@ -296,7 +308,11 @@ for epoch in range(args.n_epochs_training):
         # Generate sample image
         G.eval()
         with torch.no_grad():
-            fixed_Gz = nn.parallel.data_parallel(G, (fixed_z, G.shared(fixed_y)))
+            if args.device == torch.device('cpu') or torch.cuda.device_count() == 1:
+                fixed_Gz = G(fixed_z, G.shared(fixed_y))  # No data parallelism for CPU or single GPU
+            else:
+                fixed_Gz = nn.parallel.data_parallel(G, (fixed_z, G.shared(fixed_y)))  # For multiple GPUs
+
         image_filename = os.path.join(args.img_training_path, f'fixed_sample{epoch + 1}.jpg')
         torchvision.utils.save_image(fixed_Gz.float().cpu(), image_filename, nrow=int(fixed_Gz.shape[0] ** 0.5), normalize=True)
         print(f"Sample images saved at {image_filename}.")
@@ -382,7 +398,7 @@ plt.savefig(os.path.join(args.training_path, 'classifier_evaluation_metrics_plot
 # --------------------
 
 acc, nmi, ari = test(classifier, eval_loader, args)
-print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
+# print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
 print('Final ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(acc, nmi, ari))
 
 

@@ -155,10 +155,10 @@ def gan_pretraining(classifier, train_loader, z_, y_, fixed_z, fixed_y, args):
     D = Discriminator(n_classes=args.n_unlabeled_classes, resolution=args.img_size).to(args.device)
 
 
-    # Load the state_dict into the initialized models if pretrained models are available
+   # Load the state_dict into the initialized models if pretrained models are available
     if args.pretrained_gan and os.path.exists(os.path.join(args.pretraining_path, 'G.pth')):
-        G.load_state_dict(torch.load(os.path.join(args.pretraining_path, 'G.pth')))
-        D.load_state_dict(torch.load(os.path.join(args.pretraining_path, 'D.pth')))
+        G.load_state_dict(torch.load(os.path.join(args.pretraining_path, 'G.pth'), map_location=args.device))
+        D.load_state_dict(torch.load(os.path.join(args.pretraining_path, 'D.pth'), map_location=args.device))
 
         print("Loaded pre-trained GAN models.")
 
