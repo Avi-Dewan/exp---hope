@@ -225,8 +225,8 @@ for epoch in range(args.n_epochs_training):
     consistency_loss = F.mse_loss(prob, prob_bar)
 
     # cls_loss = cross_entropy_loss + w*consistency_loss
-    # cls_loss = cross_entropy_loss + consistency_loss
-    cls_loss = consistency_loss
+    cls_loss = cross_entropy_loss + consistency_loss
+    # cls_loss = consistency_loss
     cls_loss.backward()
     cls_optimizer.step()
 
