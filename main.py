@@ -308,7 +308,7 @@ for epoch in range(args.n_epochs_training):
         # Generate sample image
         G.eval()
         with torch.no_grad():
-            if args.device == torch.device('cpu') or torch.cuda.device_count() == 1:
+            if args.device == torch.device('cpu'):
                 fixed_Gz = G(fixed_z, G.shared(fixed_y))  # No data parallelism for CPU or single GPU
             else:
                 fixed_Gz = nn.parallel.data_parallel(G, (fixed_z, G.shared(fixed_y)))  # For multiple GPUs
