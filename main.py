@@ -125,9 +125,9 @@ eval_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split=
 # --------------------
 
 classifier = classifier_pretraining(args)
-# init_acc, init_nmi, init_ari = test(classifier, eval_loader, args)
+init_acc, init_nmi, init_ari = test(classifier, eval_loader, args)
 
-# print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
+print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
 # # --------------------
 
 
@@ -399,7 +399,7 @@ plt.savefig(os.path.join(args.training_path, 'classifier_evaluation_metrics_plot
 # --------------------
 
 acc, nmi, ari = test(classifier, eval_loader, args)
-# print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
+print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
 print('Final ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(acc, nmi, ari))
 
 
