@@ -173,7 +173,7 @@ print(f"Sample images saved at {image_filename}.")
 
 GD = G_D(G, D)
 
-train = train_fns.GAN_training_function(G, D, GD, z_, y_, args.batch_size, args.num_D_steps, num_D_accumulations=1, num_G_accumulations=1)
+train = train_fns.GAN_training_function(G, D, GD, z_, y_, args.batch_size, num_D_steps=args.num_D_steps, num_D_accumulations=1, num_G_steps=args.num_G_steps, num_G_accumulations=1)
 
 cls_optimizer = optim.SGD(classifier.parameters(), lr=args.cls_lr_training, momentum=args.cls_momentum, weight_decay=args.cls_weight_decay)
 CE_loss = nn.CrossEntropyLoss().to(args.device)
