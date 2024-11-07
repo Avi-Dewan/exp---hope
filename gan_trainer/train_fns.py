@@ -17,7 +17,7 @@ def dummy_training_function():
   return train
 
 
-def GAN_training_function(G, D, GD, z_, y_, batch_size, num_D_steps, num_D_accumulations, num_G_steps,  num_G_accumulations):
+def GAN_training_function(G, D, GD, z_, y_, batch_size, num_D_steps, num_D_accumulations, num_G_accumulations):
 
   def train(x, y):
     
@@ -55,20 +55,19 @@ def GAN_training_function(G, D, GD, z_, y_, batch_size, num_D_steps, num_D_accum
     utils.toggle_grad(D, False)
     utils.toggle_grad(G, True)
       
+    # Zero G's gradients by default before training G, for safety
+    G.optim.zero_grad()
     
-    for step_index in range(num_G_steps):
-      # If accumulating gradients, loop multiple times
-      # Zero G's gradients by default before training G, for safety
-      G.optim.zero_grad()
-      for accumulation_index in range(num_G_accumulations):    
-        z_.sample_()
-        y_.sample_()
-        D_fake = GD(z_, y_, train_G=True)
-        G_loss = gan_loss.generator_loss(D_fake) / float(num_G_accumulations)
-        G_loss.backward()
-      
-      
-      G.optim.step()
+    # If accumulating gradients, loop multiple times
+    for accumulation_index in range(num_G_accumulations):    
+      z_.sample_()
+      y_.sample_()
+      D_fake = GD(z_, y_, train_G=True)
+      G_loss = gan_loss.generator_loss(D_fake) / float(num_G_accumulations)
+      G_loss.backward()
+    
+    
+    G.optim.step()
     
     
     out = {'G_loss': float(G_loss.item()), 
