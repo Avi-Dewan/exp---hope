@@ -18,6 +18,7 @@ import numpy as np
 import warnings
 import random
 import os
+import matplotlib.pyplot as plt
 warnings.filterwarnings("ignore", category=UserWarning)
 
 def init_prob_kmeans(model, eval_loader, args):
@@ -91,6 +92,11 @@ def Baseline_train(model, train_loader, eva_loader, args):
 def PI_train(model, train_loader, eva_loader, args):
     optimizer = SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     w = 0
+    # Lists to store metrics for each epoch
+    accuracies = []
+    nmi_scores = []
+    ari_scores = []
+
     for epoch in range(args.epochs):
         loss_record = AverageMeter()
         model.train()
@@ -106,13 +112,13 @@ def PI_train(model, train_loader, eva_loader, args):
             consistency_loss = F.mse_loss(prob, prob_bar)
        
 
-            if torch.isnan(sharp_loss).any():
-                print("batch_idx: ", batch_idx)
-                print("sharp_loss: ", sharp_loss)
-                print("consistency_loss: ", consistency_loss)
-                print("prob: ", prob)
-                print("args.p_targets[idx]: ", args.p_targets[idx].float().to(device))
-                break
+            # if torch.isnan(sharp_loss).any():
+            #     print("batch_idx: ", batch_idx)
+            #     print("sharp_loss: ", sharp_loss)
+            #     print("consistency_loss: ", consistency_loss)
+            #     print("prob: ", prob)
+            #     print("args.p_targets[idx]: ", args.p_targets[idx].float().to(device))
+            #     break
 
             loss = sharp_loss + w * consistency_loss 
             loss_record.update(loss.item(), x.size(0))
@@ -120,8 +126,13 @@ def PI_train(model, train_loader, eva_loader, args):
             loss.backward()
             optimizer.step()
         print('Train Epoch: {} Avg Loss: {:.4f}'.format(epoch, loss_record.avg))
-        _, _, _, probs = test(model, eva_loader, args)
-        if epoch % args.update_interval ==0:
+
+        acc, nmi, ari, probs = test(model, eva_loader, args)
+        accuracies.append(acc)
+        nmi_scores.append(nmi)
+        ari_scores.append(ari)
+
+        if epoch % args.update_interval == 0:
             print('updating target ...')
             args.p_targets = target_distribution(probs) 
     # Create a dictionary that includes the model's state dictionary and the center
@@ -130,6 +141,17 @@ def PI_train(model, train_loader, eva_loader, args):
     # Save the dictionary
     torch.save(model_dict, args.model_dir)
     print("model saved to {}.".format(args.model_dir))
+
+    plt.figure(figsize=(10, 6))
+    epochs_range = range(args.epochs)
+    plt.plot(epochs_range, accuracies, label="Accuracy")
+    plt.plot(epochs_range, nmi_scores, label="NMI")
+    plt.plot(epochs_range, ari_scores, label="ARI")
+    plt.xlabel("Epochs")
+    plt.ylabel("Metric Score")
+    plt.title("Training Metrics over Epochs")
+    plt.legend()
+    plt.savefig(args.model_folder+'/accuracies.png')
 
 def TE_train(model, train_loader, eva_loader, args):
     optimizer = SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
