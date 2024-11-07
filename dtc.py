@@ -37,7 +37,8 @@ def init_prob_kmeans(model, eval_loader, args):
         feats[idx, :] = feat.data.cpu().numpy()
         targets[idx] = label.data.cpu().numpy()
     # evaluate clustering performance
-    pca = PCA(n_components=args.n_unlabeled_classes)
+    # pca = PCA(n_components=args.n_unlabeled_classes)
+    pca = PCA(n_components=20)
     feats = pca.fit_transform(feats)
     kmeans = KMeans(n_clusters=args.n_unlabeled_classes, n_init=20)
     y_pred = kmeans.fit_predict(feats) 
@@ -202,7 +203,8 @@ def test(model, test_loader, args, tsne=False):
     model.eval()
     preds=np.array([])
     targets=np.array([])
-    feats = np.zeros((len(test_loader.dataset), args.n_unlabeled_classes))
+    # feats = np.zeros((len(test_loader.dataset), args.n_unlabeled_classes))
+    feats = np.zeros((len(test_loader.dataset),20))
     probs= np.zeros((len(test_loader.dataset), args.n_unlabeled_classes))
     for batch_idx, (x, label, idx) in enumerate(tqdm(test_loader)):
         x, label = x.to(device), label.to(device)
@@ -282,9 +284,11 @@ if __name__ == "__main__":
 
 
 
-    model = ResNet(BasicBlock, [2,2,2,2], args.n_unlabeled_classes).to(device)
+    # model = ResNet(BasicBlock, [2,2,2,2], args.n_unlabeled_classes).to(device)
+    model = ResNet(BasicBlock, [2,2,2,2], 20).to(device)
     model.load_state_dict(init_feat_extractor.state_dict(), strict=False)
-    model.center= Parameter(torch.Tensor(args.n_unlabeled_classes, args.n_unlabeled_classes))
+    # model.center= Parameter(torch.Tensor(args.n_unlabeled_classes, args.n_unlabeled_classes))
+    model.center= Parameter(torch.Tensor(args.n_unlabeled_classes, 20))
     model.center.data = torch.tensor(init_centers).float().to(device)
 
     print(model)
