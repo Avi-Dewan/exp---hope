@@ -125,9 +125,9 @@ eval_loader = CIFAR10Loader(root=args.data_path, batch_size=D_batch_size, split=
 # --------------------
 
 classifier = classifier_pretraining(args)
-init_acc, init_nmi, init_ari = test(classifier, eval_loader, args)
+# init_acc, init_nmi, init_ari = test(classifier, eval_loader, args)
 
-print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
+# print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
 # # --------------------
 
 
@@ -173,7 +173,7 @@ print(f"Sample images saved at {image_filename}.")
 
 GD = G_D(G, D)
 
-train = train_fns.GAN_training_function(G, D, GD, z_, y_, args.batch_size, num_D_steps=args.num_D_steps, num_D_accumulations=1, num_G_steps=args.num_G_steps, num_G_accumulations=1)
+train = train_fns.GAN_training_function(G, D, GD, z_, y_, args.batch_size, args.num_D_steps, num_D_accumulations=1, num_G_accumulations=1)
 
 cls_optimizer = optim.SGD(classifier.parameters(), lr=args.cls_lr_training, momentum=args.cls_momentum, weight_decay=args.cls_weight_decay)
 CE_loss = nn.CrossEntropyLoss().to(args.device)
@@ -196,7 +196,6 @@ epoch_C_losses = []
 
 # Initialize lists to store classfier metrics and their corresponding evaluation epochs
 eval_epochs, acc_list, nmi_list, ari_list = [], [], [], []
-
 
 # Training loop
 for epoch in range(args.n_epochs_training):
@@ -230,7 +229,7 @@ for epoch in range(args.n_epochs_training):
                 
             fake_labels = y_
 
-            fake_images = torch.tensor(fake_images).to(args.device)
+            # fake_images = torch.tensor(fake_images).to(args.device)
             y = torch.tensor(y_).to(args.device)
 
             x = renormalize_to_standard(fake_images).to(args.device)
@@ -399,8 +398,7 @@ plt.savefig(os.path.join(args.training_path, 'classifier_evaluation_metrics_plot
 # --------------------
 
 acc, nmi, ari = test(classifier, eval_loader, args)
-print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
+# print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
 print('Final ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(acc, nmi, ari))
-
 
 
