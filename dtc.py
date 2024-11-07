@@ -209,8 +209,6 @@ def test(model, test_loader, args, tsne=False):
     for batch_idx, (x, label, idx) in enumerate(tqdm(test_loader)):
         x, label = x.to(device), label.to(device)
         feat = model(x)
-        print(feat.shape)
-        print(model.center.shape)
         prob = feat2prob(feat, model.center)
         _, pred = prob.max(1)
         targets=np.append(targets, label.cpu().numpy())
