@@ -43,11 +43,11 @@ class Generator(nn.Module):
 
 
 # Define the Discriminator
+# Updated Discriminator
 class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
         self.disc = nn.Sequential(
-            # Input: (batch_size, 3, 32, 32)
             nn.Conv2d(img_channels, 64, 4, 2, 1, bias=False),  # Output: (batch_size, 64, 16, 16)
             nn.BatchNorm2d(64),
             nn.LeakyReLU(0.2, inplace=True),
@@ -68,11 +68,10 @@ class Discriminator(nn.Module):
             nn.LeakyReLU(0.2, inplace=True),
             nn.Dropout(0.4),
             
-            # Add an additional layer for complexity
-            nn.Conv2d(512, 1024, 3, 1, 0, bias=False),  # Output: (batch_size, 1024, 1, 1)
+            # Adjusted kernel size to (2, 2) here to handle (2, 2) input size
+            nn.Conv2d(512, 1024, 2, 1, 0, bias=False),  # Output: (batch_size, 1024, 1, 1)
             nn.LeakyReLU(0.2, inplace=True),
             
-            # Final layer
             nn.Conv2d(1024, 1, 1, 1, 0, bias=False),  # Output: (batch_size, 1, 1, 1)
             nn.Sigmoid()
         )
