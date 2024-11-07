@@ -41,32 +41,44 @@ class Generator(nn.Module):
     def forward(self, x):
         return self.gen(x)
 
+
 # Define the Discriminator
 class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
         self.disc = nn.Sequential(
-            nn.Conv2d(img_channels, 64, 4, 2, 1, bias=False),
+            # Input: (batch_size, 3, 32, 32)
+            nn.Conv2d(img_channels, 64, 4, 2, 1, bias=False),  # Output: (batch_size, 64, 16, 16)
+            nn.BatchNorm2d(64),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Dropout(0.3),
-            nn.Conv2d(64, 128, 4, 2, 1, bias=False),
+            
+            nn.Conv2d(64, 128, 4, 2, 1, bias=False),  # Output: (batch_size, 128, 8, 8)
             nn.BatchNorm2d(128),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Dropout(0.3),
-            nn.Conv2d(128, 256, 4, 2, 1, bias=False),
+            
+            nn.Conv2d(128, 256, 4, 2, 1, bias=False),  # Output: (batch_size, 256, 4, 4)
             nn.BatchNorm2d(256),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Dropout(0.3),
-            nn.Conv2d(256, 512, 4, 2, 1, bias=False),
+            nn.Dropout(0.4),
+            
+            nn.Conv2d(256, 512, 4, 2, 1, bias=False),  # Output: (batch_size, 512, 2, 2)
             nn.BatchNorm2d(512),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(512, 1, 4, 1, 0, bias=False),
+            nn.Dropout(0.4),
+            
+            # Add an additional layer for complexity
+            nn.Conv2d(512, 1024, 3, 1, 0, bias=False),  # Output: (batch_size, 1024, 1, 1)
+            nn.LeakyReLU(0.2, inplace=True),
+            
+            # Final layer
+            nn.Conv2d(1024, 1, 1, 1, 0, bias=False),  # Output: (batch_size, 1, 1, 1)
             nn.Sigmoid()
         )
 
     def forward(self, x):
-        return self.disc(x)
-
+        return self.disc(x).view(-1, 1)
 
 # train_loader = CIFAR10Loader(root='./datasets', batch_size=128, split='train', aug=, shuffle=True, target_list=range(5, 10))
 train_loader = CIFAR10Loader(root='./datasets', batch_size=batch_size, split='train', aug=None, shuffle=True, target_list=range(5, 10))
