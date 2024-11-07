@@ -15,7 +15,8 @@ img_channels = 3
 batch_size = 128
 lr = 0.0002
 beta1 = 0.5
-num_epochs = 5
+num_epochs = 150
+save_interval = 20
 
 # Define the Generator
 class Generator(nn.Module):
@@ -157,7 +158,7 @@ for epoch in range(num_epochs):
     print(f"Epoch [{epoch}/{num_epochs}] | D Loss: {d_loss.item()} | G Loss: {g_loss.item()}")
 
     # Generate and save images every few epochs
-    if epoch % 2 == 0:
+    if epoch % save_interval == 0:
         with torch.no_grad():
             fixed_noise = get_noise(20, z_dim)
             fake_images = G(fixed_noise).cpu()
