@@ -102,7 +102,9 @@ def compute_fid(real_images, fake_images):
     fake_images = (fake_images + 1) / 2  # Rescale to [0, 1]
     real_images = real_images.cpu().float()
     fake_images = fake_images.cpu().float()
-    metrics = calculate_metrics(input1=real_images, input2=fake_images, metric='fid')
+    
+    # Specify `fid=True` explicitly
+    metrics = calculate_metrics(input1=real_images, input2=fake_images, fid=True)
     return metrics['frechet_inception_distance']
 
 # Trackers
