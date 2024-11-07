@@ -15,7 +15,7 @@ img_channels = 3
 batch_size = 128
 lr = 0.0002
 beta1 = 0.5
-num_epochs = 10
+num_epochs = 5
 
 # Define the Generator
 class Generator(nn.Module):
@@ -169,24 +169,22 @@ for epoch in range(num_epochs):
         # fid_scores.append(fid)
         # print(f"FID at epoch {epoch}: {fid}")
 
-# Plot losses and FID scores
-fig, ax = plt.subplots(1, 2, figsize=(12, 6))
-
 # Plot Generator and Discriminator Losses
-ax[0].plot(g_losses, label="Generator Loss", color="blue")
-ax[0].plot(d_losses, label="Discriminator Loss", color="red")
-ax[0].set_title("Generator and Discriminator Loss")
-ax[0].set_xlabel("Iterations")
-ax[0].set_ylabel("Loss")
-ax[0].legend()
+plt.figure(figsize=(6, 6))
+plt.plot(g_losses, label="Generator Loss", color="blue")
+plt.plot(d_losses, label="Discriminator Loss", color="red")
+plt.title("Generator and Discriminator Loss")
+plt.xlabel("Iterations")
+plt.ylabel("Loss")
+plt.legend()
+plt.savefig("loss_plot.png")
 
 # Plot FID over epochs
-ax[1].plot(range(0, num_epochs, 10), fid_scores, label="FID Score", color="green")
-ax[1].set_title("FID Score over Epochs")
-ax[1].set_xlabel("Epochs")
-ax[1].set_ylabel("FID Score")
-ax[1].legend()
-
-plt.tight_layout()
-plt.savefig("training_metrics.png")
-plt.show()
+# plt.figure(figsize=(6, 6))
+# plt.plot(range(len(fid_scores)), fid_scores, label="FID Score", color="green")
+# plt.title("FID Score over Epochs")
+# plt.xlabel("Epochs")
+# plt.ylabel("FID Score")
+# plt.legend()
+# plt.savefig("fid_plot.png")
+# plt.show()
