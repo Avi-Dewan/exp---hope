@@ -165,9 +165,9 @@ for epoch in range(num_epochs):
             vutils.save_image(grid_img, f"generated_images_epoch_{epoch}.png")
         
         # Calculate FID
-        fid = compute_fid(real_images[:batch_size], fake_images)
-        fid_scores.append(fid)
-        print(f"FID at epoch {epoch}: {fid}")
+        # fid = compute_fid(real_images[:batch_size], fake_images)
+        # fid_scores.append(fid)
+        # print(f"FID at epoch {epoch}: {fid}")
 
 # Plot losses and FID scores
 fig, ax = plt.subplots(1, 2, figsize=(12, 6))
