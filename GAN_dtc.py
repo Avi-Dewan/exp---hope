@@ -45,7 +45,6 @@ print('loaded generator..')
 
 # Define the transformations
 transform = transforms.Compose([
-    transforms.ToTensor(),
     transforms.Normalize(mean, std),
 ])
 
@@ -54,7 +53,6 @@ augment_transform = transforms.Compose([
     # Assuming this class is defined elsewhere as per your setup
     # RandomTranslateWithReflect(4),
     transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
     transforms.Normalize(mean, std),
 ])
 
