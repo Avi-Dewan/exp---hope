@@ -16,8 +16,8 @@ img_channels = 3
 batch_size = 128
 lr = 0.0002
 beta1 = 0.5
-num_epochs = 150
-save_interval = 20
+num_epochs = 5
+save_interval = 2
 
 # Directory setup
 output_dir = './gan'
