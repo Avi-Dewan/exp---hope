@@ -112,9 +112,11 @@ class GeneratedDataset(torch.utils.data.Dataset):
 
 # Generate data and wrap in a DataLoader
 generated_data = generate_augmented_samples(generator)
-generated_loader = DataLoader(GeneratedDataset(generated_data), batch_size=1, shuffle=True)
+generated_loader = DataLoader(GeneratedDataset(generated_data), batch_size=128, shuffle=True)
+
+print(len(generated_loader.dataset))
 
 # Example usage
 for batch_idx, ((x, x_v1, x_v2), label, idx) in enumerate(generated_loader):
     # x, x_v1, x_v2 will have your generated images and their views
-    pass
+    break
