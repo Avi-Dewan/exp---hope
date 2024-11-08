@@ -79,6 +79,9 @@ def generate_augmented_samples(generator, batch_size=128, num_batches=200):
             for img in gen_images:
                 # Denormalize
                 denorm_img = denormalize(img)
+
+                if denorm_img is None:
+                    print("it's none!")
                 
                 # Apply augment transformations
                 img_v1 = augment_transform(denorm_img)
