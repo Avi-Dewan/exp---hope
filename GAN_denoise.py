@@ -1,3 +1,4 @@
+import os
 import torch
 from tqdm import tqdm
 import torch.nn as nn
@@ -17,6 +18,12 @@ lr = 0.0002
 beta1 = 0.5
 num_epochs = 150
 save_interval = 20
+
+# Directory setup
+output_dir = './gan'
+sample_dir = os.path.join(output_dir, 'samples')
+os.makedirs(output_dir, exist_ok=True)
+os.makedirs(sample_dir, exist_ok=True)
 
 # Define the Generator
 class Generator(nn.Module):
@@ -87,6 +94,12 @@ train_loader = CIFAR10Loader(root='./datasets', batch_size=batch_size, split='tr
 # Initialize models
 G = Generator(z_dim=z_dim).cuda()
 D = Discriminator().cuda()
+
+# Print models and total parameter count
+print("Generator Model:\n", G)
+print("Total Parameters in Generator:", sum(p.numel() for p in G.parameters()))
+print("\nDiscriminator Model:\n", D)
+print("Total Parameters in Discriminator:", sum(p.numel() for p in D.parameters()))
 
 
 # Loss and optimizers
@@ -164,14 +177,14 @@ for epoch in range(num_epochs):
             fixed_noise = get_noise(20, z_dim)
             fake_images = G(fixed_noise).cpu()
             grid_img = vutils.make_grid(fake_images, nrow=5, normalize=True)
-            vutils.save_image(grid_img, f"generated_images_epoch_{epoch}.png")
+            vutils.save_image(grid_img, os.path.join(sample_dir, f"generated_images_epoch_{epoch}.png"))
         
-        # Calculate FID
-        # fid = compute_fid(real_images[:batch_size], fake_images)
-        # fid_scores.append(fid)
-        # print(f"FID at epoch {epoch}: {fid}")
+# Save Generator and Discriminator
+torch.save(G.state_dict(), os.path.join(output_dir, "generator.pth"))
+torch.save(D.state_dict(), os.path.join(output_dir, "discriminator.pth"))
+print("Models saved successfully.")
 
-# Plot Generator and Discriminator Losses
+# Plot Losses
 plt.figure(figsize=(6, 6))
 plt.plot(g_losses, label="Generator Loss", color="blue")
 plt.plot(d_losses, label="Discriminator Loss", color="red")
@@ -179,7 +192,8 @@ plt.title("Generator and Discriminator Loss")
 plt.xlabel("Iterations")
 plt.ylabel("Loss")
 plt.legend()
-plt.savefig("loss_plot.png")
+plt.savefig(os.path.join(output_dir, "loss_plot.png"))
+
 
 # Plot FID over epochs
 # plt.figure(figsize=(6, 6))
