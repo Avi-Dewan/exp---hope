@@ -52,7 +52,7 @@ transform = transforms.Compose([
 # Define the transformations with random augmentations for v1 and v2
 augment_transform = transforms.Compose([
     # Assuming this class is defined elsewhere as per your setup
-    RandomTranslateWithReflect(4),
+    # RandomTranslateWithReflect(4),
     transforms.RandomHorizontalFlip(),
     transforms.ToTensor(),
     transforms.Normalize(mean, std),
