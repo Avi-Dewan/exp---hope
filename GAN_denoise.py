@@ -88,6 +88,7 @@ train_loader = CIFAR10Loader(root='./datasets', batch_size=batch_size, split='tr
 G = Generator(z_dim=z_dim).cuda()
 D = Discriminator().cuda()
 
+
 # Loss and optimizers
 criterion = nn.BCELoss()
 optimizer_G = optim.Adam(G.parameters(), lr=lr, betas=(beta1, 0.999))
