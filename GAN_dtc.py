@@ -117,7 +117,6 @@ generated_loader = DataLoader(GeneratedDataset(generated_data), batch_size=128, 
 print(len(generated_loader.dataset))
 
 # Example usage
-for data in enumerate(generated_loader):
+for batch_idx, ((x, x_v1, x_v2), label, idx) in enumerate(generated_loader):
     # x, x_v1, x_v2 will have your generated images and their views
-    print(data)
     break
