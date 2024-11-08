@@ -17,7 +17,7 @@ generator = Generator(z_dim=z_dim).cuda()
 generator.load_state_dict(torch.load('/kaggle/input/newgan5to9/pytorch/default/1/generator.pth'))
 generator.eval()
 
-
+print('loaded generator..')
 
 # Define the transformations
 transform = transforms.Compose([
