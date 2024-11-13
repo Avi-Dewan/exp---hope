@@ -21,11 +21,11 @@ def train(model, train_loader, labeled_eval_loader, args):
         loss_record = AverageMeter()
         model.train()
         exp_lr_scheduler.step()
-        for batch_idx, (x, label, idx) in enumerate(tqdm(train_loader)):
-            x, label = x.to(device), (label-5).to(device)
-            output = model(x)
-            loss= criterion(output, label)
-            loss_record.update(loss.item(), x.size(0))
+        for batch_idx, (x, label, idx) in enumerate(tqdm(train_loader)): 
+            x, label = x.to(device), (label-5).to(device) # map labels from (5-9) to (0-4)
+            output = model(x) # model forward pass
+            loss= criterion(output, label) # cross entopy loss
+            loss_record.update(loss.item(), x.size(0)) # Record losses
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -41,8 +41,8 @@ def test(model, test_loader, args):
     for batch_idx, (x, label, _) in enumerate(tqdm(test_loader)):
         x, label = x.to(device), label.to(device)
         output = model(x)
-        _, pred = output.max(1)
-        pred = pred + 5
+        _, pred = output.max(1) # pred will be between 0 to 4
+        pred = pred + 5 # map from (0-4) to (5-9)
         targets.extend(label.cpu().numpy())
         preds.extend(pred.cpu().numpy())
     
@@ -85,11 +85,12 @@ if __name__ == "__main__":
         os.makedirs(model_dir)
     args.model_dir = model_dir+'/'+'{}.pth'.format(args.model_name) 
 
-    model = ResNet(BasicBlock, [2,2,2,2], args.num_labeled_classes).to(device)
 
-    
+    # Load the feature Extractor
+    model = ResNet(BasicBlock, [2,2,2,2], args.num_labeled_classes).to(device)
     state_dict = torch.load(args.pretrained_dir)
     model.load_state_dict(state_dict, strict=False)
+
     # for name, param in model.named_parameters(): 
     #     # if 'linear' not in name and 'layer4' not in name:
     #     if 'linear' not in name:
@@ -106,7 +107,7 @@ if __name__ == "__main__":
         labeled_eval_loader = SVHNLoader(root=args.dataset_root, batch_size=args.batch_size, split='test', aug=None, shuffle=False, target_list = range(args.num_labeled_classes))
 
     if args.mode == 'train':
-        train(model, labeled_train_loader, labeled_eval_loader, args)
+        train(model, labeled_train_loader, labeled_eval_loader, args) # fine tune using labeled data
         torch.save(model.state_dict(), args.model_dir)
         print("model saved to {}.".format(args.model_dir))
     elif args.mode == 'test':

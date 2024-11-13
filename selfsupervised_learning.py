@@ -202,7 +202,7 @@ def main():
         target_list = range(5, 10))
    
     num_blocks = [2, 2, 2, 2]  # Example for ResNet-18
-    model = PreModel(BasicBlock, num_blocks)
+    model = PreModel(BasicBlock, num_blocks) # Feature Extractor -> Projection Head
     model = model.to(device)
 
     #OPTMIZER

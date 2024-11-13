@@ -67,7 +67,7 @@ class PreModel(nn.Module):
         super(PreModel, self).__init__()
         self.feature_extractor = ResNet(block, num_blocks)
         self.feature_extractor.linear = Identity()
-        self.projector = ProjectionHead(512 * block.expansion, 2048, 128)  # Adjust dimensions if necessary
+        self.projector = ProjectionHead(512 * block.expansion, 2048, 128)  # Adjust dimensions if necessary # projection head
 
     def forward(self, x):
         features = self.feature_extractor(x)

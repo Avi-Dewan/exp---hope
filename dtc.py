@@ -19,63 +19,77 @@ import warnings
 import random
 import os
 import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.manifold import TSNE
 warnings.filterwarnings("ignore", category=UserWarning)
 
 def init_prob_kmeans(model, eval_loader, args):
+    '''
+    Initilize Cluster centers.
+    Calculate initial acc, nmi, ari.
+    Calculate initial probability of target images
+    '''
     torch.manual_seed(1)
     model = model.to(device)
     # cluster parameter initiate
     model.eval()
-    # total_data_length = len(eval_loader)*args.batch_size
-    # targets = np.zeros(total_data_length) 
-    # feats = np.zeros((total_data_length, 512))
-    targets = np.zeros(len(eval_loader.dataset)) 
-    feats = np.zeros((len(eval_loader.dataset), 512))
+    targets = np.zeros(len(eval_loader.dataset)) # labels storage
+    feats = np.zeros((len(eval_loader.dataset), 512)) # features storage
     for _, (x, label, idx) in enumerate(eval_loader):
         x = x.to(device)
-        feat = model(x)
-        idx = idx.data.cpu().numpy()
-        feats[idx, :] = feat.data.cpu().numpy()
-        targets[idx] = label.data.cpu().numpy()
+        feat = model(x) # get the feature from the model
+        idx = idx.data.cpu().numpy() # get the index
+        feats[idx, :] = feat.data.cpu().numpy()  # store the feature
+        targets[idx] = label.data.cpu().numpy() # store the label
     # evaluate clustering performance
     # pca = PCA(n_components=args.n_unlabeled_classes)
-    pca = PCA(n_components=32)
-    feats = pca.fit_transform(feats)
-    kmeans = KMeans(n_clusters=args.n_unlabeled_classes, n_init=20)
-    y_pred = kmeans.fit_predict(feats) 
+    pca = PCA(n_components=20) # PCA for dimensionality reduction PCA: 512 -> 20
+    feats = pca.fit_transform(feats) # fit the PCA model and transform the features
+    kmeans = KMeans(n_clusters=args.n_unlabeled_classes, n_init=20)  # KMeans clustering
+    y_pred = kmeans.fit_predict(feats) # predict the cluster
     acc, nmi, ari = cluster_acc(targets, y_pred), nmi_score(targets, y_pred), ari_score(targets, y_pred)
     print('Init acc {:.4f}, nmi {:.4f}, ari {:.4f}'.format(acc, nmi, ari))
     probs = feat2prob(torch.from_numpy(feats), torch.from_numpy(kmeans.cluster_centers_))
     return acc, nmi, ari, kmeans.cluster_centers_, probs 
 
 def warmup_train(model, train_loader, eva_loader, args):
+    '''
+    Warmup Training:
+    Anneal the probability distribution to target distribution.
+    After warmup , update the target distribution
+    '''
     optimizer = SGD(model.parameters(), lr=args.warmup_lr, momentum=args.momentum, weight_decay=args.weight_decay)
     for epoch in range(args.warmup_epochs):
         loss_record = AverageMeter()
         model.train()
         for batch_idx, ((x, _), label, idx) in enumerate(tqdm(train_loader)):
             x = x.to(device)
-            feat = model(x)
-            prob = feat2prob(feat, model.center)
-            loss = F.kl_div(prob.log(), args.p_targets[idx].float().to(device))
+            feat = model(x) # get the feature from the model
+            prob = feat2prob(feat, model.center) # get the probability distribution by calculating distance from the center
+            loss = F.kl_div(prob.log(), args.p_targets[idx].float().to(device)) # calculate the KL divergence loss between the probability distribution and the target distribution
             loss_record.update(loss.item(), x.size(0))
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
         print('Warmup_train Epoch: {} Avg Loss: {:.4f}'.format(epoch, loss_record.avg))
         _, _, _, probs = test(model, eva_loader, args)
-    args.p_targets = target_distribution(probs) 
+    args.p_targets = target_distribution(probs)  # update the target distribution
 
 def Baseline_train(model, train_loader, eva_loader, args):
+    '''
+    Baseline Training:
+    Anneal probability distribution to target distribution.
+    At each update interval , update the target distribution
+    '''
     optimizer = SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     for epoch in range(args.epochs):
         loss_record = AverageMeter()
         model.train()
         for batch_idx, ((x, _), label, idx) in enumerate(tqdm(train_loader)):
             x = x.to(device)
-            feat = model(x)
-            prob = feat2prob(feat, model.center)
-            loss = F.kl_div(prob.log(), args.p_targets[idx].float().to(device))
+            feat = model(x) # get the feature from the model
+            prob = feat2prob(feat, model.center) # get the probability distribution by calculating distance from the center
+            loss = F.kl_div(prob.log(), args.p_targets[idx].float().to(device)) # calculate the KL divergence loss between the probability distribution and the target distribution
             loss_record.update(loss.item(), x.size(0))
             optimizer.zero_grad()
             loss.backward()
@@ -84,12 +98,16 @@ def Baseline_train(model, train_loader, eva_loader, args):
         _, _, _, probs = test(model, eva_loader, args)
         if epoch % args.update_interval ==0:
             print('updating target ...')
-            args.p_targets = target_distribution(probs) 
+            args.p_targets = target_distribution(probs) # update the target distribution
     torch.save(model.state_dict(), args.model_dir)
     print("model saved to {}.".format(args.model_dir))
 
 
 def PI_train(model, train_loader, eva_loader, args):
+    '''
+    Sharpening the probability distribution and enforcing consistency with different augmentations
+    '''
+
     optimizer = SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     w = 0
     # Lists to store metrics for each epoch
@@ -103,24 +121,17 @@ def PI_train(model, train_loader, eva_loader, args):
         w = args.rampup_coefficient * ramps.sigmoid_rampup(epoch, args.rampup_length) 
         for batch_idx, ((x, x_bar), label, idx) in enumerate(tqdm(train_loader)):
             x, x_bar = x.to(device), x_bar.to(device)
-            feat = model(x)
-            feat_bar = model(x_bar)
-            prob = feat2prob(feat, model.center)
-            prob_bar = feat2prob(feat_bar, model.center)
+            feat = model(x) # get the feature from the model
+            feat_bar = model(x_bar)  # get the feature of the augmented image
+            prob = feat2prob(feat, model.center) # get the probability distribution by calculating distance from the center
+            prob_bar = feat2prob(feat_bar, model.center) #  get the probability distribution of the augmented image
            
-            sharp_loss = F.kl_div(prob.log(), args.p_targets[idx].float().to(device))
-            consistency_loss = F.mse_loss(prob, prob_bar)
-       
+            sharp_loss = F.kl_div(prob.log(), args.p_targets[idx].float().to(device)) # calculate the KL divergence loss between the probability distribution and the target distribution
+            consistency_loss = F.mse_loss(prob, prob_bar)  # calculate the mean squared error loss between the probability distribution and the probability distribution of the augmented image
 
-            # if torch.isnan(sharp_loss).any():
-            #     print("batch_idx: ", batch_idx)
-            #     print("sharp_loss: ", sharp_loss)
-            #     print("consistency_loss: ", consistency_loss)
-            #     print("prob: ", prob)
-            #     print("args.p_targets[idx]: ", args.p_targets[idx].float().to(device))
-            #     break
+            # Why MSE ? 
 
-            loss = sharp_loss + w * consistency_loss 
+            loss = sharp_loss + w * consistency_loss   # calculate the total loss
             loss_record.update(loss.item(), x.size(0))
             optimizer.zero_grad()
             loss.backward()
@@ -134,7 +145,7 @@ def PI_train(model, train_loader, eva_loader, args):
 
         if epoch % args.update_interval == 0:
             print('updating target ...')
-            args.p_targets = target_distribution(probs) 
+            args.p_targets = target_distribution(probs)  # update the target distribution
     # Create a dictionary that includes the model's state dictionary and the center
     model_dict = {'state_dict': model.state_dict(), 'center': model.center}
 
@@ -154,6 +165,9 @@ def PI_train(model, train_loader, eva_loader, args):
     plt.savefig(args.model_folder+'/accuracies.png')
 
 def TE_train(model, train_loader, eva_loader, args):
+    '''
+     Sharpening the probability distribution and Temporal Ensembling (TE) , calculate the temporal average of the probability distribution and enforce consistency with the temporal average
+    '''
     optimizer = SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     w = 0
     alpha = 0.6
@@ -167,29 +181,32 @@ def TE_train(model, train_loader, eva_loader, args):
         w = args.rampup_coefficient * ramps.sigmoid_rampup(epoch, args.rampup_length) 
         for batch_idx, ((x, _), label, idx) in enumerate(tqdm(train_loader)):
             x = x.to(device)
-            feat = model(x)
-            prob = feat2prob(feat, model.center)
-            z_epoch[idx, :] = prob
-            prob_bar = Variable(z_ema[idx, :], requires_grad=False)
-            sharp_loss = F.kl_div(prob.log(), args.p_targets[idx].float().to(device))
-            consistency_loss = F.mse_loss(prob, prob_bar)
-            loss = sharp_loss + w * consistency_loss 
+            feat = model(x) # get the feature from the model
+            prob = feat2prob(feat, model.center) # get the probability distribution by calculating distance from the center
+            z_epoch[idx, :] = prob # store the probability distribution
+            prob_bar = Variable(z_ema[idx, :], requires_grad=False) # get the temporal average of the probability distribution
+            sharp_loss = F.kl_div(prob.log(), args.p_targets[idx].float().to(device)) # calculate the KL divergence loss between the probability distribution and the target distribution
+            consistency_loss = F.mse_loss(prob, prob_bar) # calculate the mean squared error loss between the probability distribution and the temporal average of the probability distribution
+            loss = sharp_loss + w * consistency_loss  # calculate the total loss
             loss_record.update(loss.item(), x.size(0))
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
-        Z = alpha * Z + (1. - alpha) * z_epoch
-        z_ema = Z * (1. / (1. - alpha ** (epoch + 1)))
+        Z = alpha * Z + (1. - alpha) * z_epoch  # calculate the intermediate values
+        z_ema = Z * (1. / (1. - alpha ** (epoch + 1)))  # calculate the temporal average of the probability distribution
         print('Train Epoch: {} Avg Loss: {:.4f}'.format(epoch, loss_record.avg))
         _, _, _, probs = test(model, eva_loader, args)
         if epoch % args.update_interval ==0:
             print('updating target ...')
-            args.p_targets = target_distribution(probs) 
+            args.p_targets = target_distribution(probs)  # update the target distribution
     torch.save(model.state_dict(), args.model_dir)
     print("model saved to {}.".format(args.model_dir))
 
 def TEP_train(model, train_loader, eva_loader, args):
+    '''
+    Temporal Ensembling with Perturbations (TEP), # Sharpening the probability distribution and does not include a consistency loss and updates the target distribution based on the temporal outputs.
+    '''
     optimizer = SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     w = 0
     alpha = 0.6
@@ -202,9 +219,9 @@ def TEP_train(model, train_loader, eva_loader, args):
         model.train()
         for batch_idx, ((x, _), label, idx) in enumerate(tqdm(train_loader)):
             x = x.to(device)
-            feat = model(x)
-            prob = feat2prob(feat, model.center)
-            loss = F.kl_div(prob.log(), args.p_targets[idx].float().to(device))
+            feat = model(x) # get the feature from the model
+            prob = feat2prob(feat, model.center) # get the probability distribution by calculating distance from the center
+            loss = F.kl_div(prob.log(), args.p_targets[idx].float().to(device)) # calculate the KL divergence loss between the probability distribution and the target distribution
             loss_record.update(loss.item(), x.size(0))
             optimizer.zero_grad()
             loss.backward()
@@ -212,12 +229,12 @@ def TEP_train(model, train_loader, eva_loader, args):
 
         print('Train Epoch: {} Avg Loss: {:.4f}'.format(epoch, loss_record.avg))
         _, _, _, probs = test(model, eva_loader, args)
-        z_epoch = probs.float().to(device)
-        Z = alpha * Z + (1. - alpha) * z_epoch
-        z_bars = Z * (1. / (1. - alpha ** (epoch + 1)))
+        z_epoch = probs.float().to(device) # store the probability distribution
+        Z = alpha * Z + (1. - alpha) * z_epoch # calculate the intermediate values
+        z_bars = Z * (1. / (1. - alpha ** (epoch + 1)))  # calculate the temporal average of the probability distribution
         if epoch % args.update_interval ==0:
             print('updating target ...')
-            args.p_targets = target_distribution(z_bars) 
+            args.p_targets = target_distribution(z_bars)  # update the target distribution from the temporal average of the probability distribution instead of the probability distribution
     torch.save(model.state_dict(), args.model_dir)
     print("model saved to {}.".format(args.model_dir))
 
@@ -226,12 +243,12 @@ def test(model, test_loader, args, tsne=False):
     preds=np.array([])
     targets=np.array([])
     # feats = np.zeros((len(test_loader.dataset), args.n_unlabeled_classes))
-    feats = np.zeros((len(test_loader.dataset), 32))
+    feats = np.zeros((len(test_loader.dataset), 20))
     probs= np.zeros((len(test_loader.dataset), args.n_unlabeled_classes))
     for batch_idx, (x, label, idx) in enumerate(tqdm(test_loader)):
         x, label = x.to(device), label.to(device)
-        feat = model(x)
-        prob = feat2prob(feat, model.center)
+        feat = model(x) # get the feature from the model
+        prob = feat2prob(feat, model.center) # get the probability distribution by calculating distance from the center
         _, pred = prob.max(1)
         targets=np.append(targets, label.cpu().numpy())
         preds=np.append(preds, pred.cpu().numpy())
@@ -242,18 +259,71 @@ def test(model, test_loader, args, tsne=False):
     print('Test acc {:.4f}, nmi {:.4f}, ari {:.4f}'.format(acc, nmi, ari))
     probs = torch.from_numpy(probs)
 
-    if tsne:
-        from sklearn.manifold import TSNE
-        import matplotlib.pyplot as plt
-        # tsne plot
-         # Create t-SNE visualization
-        X_embedded = TSNE(n_components=2).fit_transform(feats)  # Use meaningful features for t-SNE
-
-        plt.figure(figsize=(8, 6))
-        plt.scatter(X_embedded[:, 0], X_embedded[:, 1], c=targets, cmap='viridis')
-        plt.title("t-SNE Visualization of Learned Features on Unlabelled CIFAR-10 Subset")
-        plt.savefig(args.model_folder+'/tsne.png')
     return acc, nmi, ari, probs 
+
+def plot_tsne(model, test_loader, args):
+    """Generates a t-SNE plot of the learned features."""
+    model.eval()
+    feats = np.zeros((len(test_loader.dataset), 20))
+    targets = np.array([])
+    
+    for batch_idx, (x, label, idx) in enumerate(tqdm(test_loader)):
+        x, label = x.to(device), label.to(device)
+        
+        feat = model.extract_feature(x)  # Extract intermediate layer features
+        targets = np.append(targets, label.cpu().numpy())
+        idx = idx.data.cpu().numpy()
+        
+        feats[idx, :] = feat.cpu().detach().numpy()
+
+    # Perform t-SNE on the extracted features
+    X_embedded = TSNE(n_components=2).fit_transform(feats)
+    
+    plt.figure(figsize=(8, 6))
+    plt.scatter(X_embedded[:, 0], X_embedded[:, 1], c=targets, cmap='viridis', s=5, alpha=0.7)
+    plt.colorbar()
+    plt.title("t-SNE Visualization of Learned Features on Unlabeled CIFAR-10 Subset")
+    plt.savefig(f"{args.model_folder}/tsne.png")
+    plt.show()
+
+def plot_pdf(model, test_loader, args):
+    """Generates PDF plots for intermediate features and final outputs."""
+    model.eval()
+    feats = np.zeros((len(test_loader.dataset), 512))
+    final_outputs = np.zeros((len(test_loader.dataset), 20))
+    
+    for batch_idx, (x, _, idx) in enumerate(tqdm(test_loader)):
+        x = x.to(device)
+        
+        # Extract intermediate features and final output
+        feat = model.extract_feature(x)
+        final_output = model(x)
+        
+        idx = idx.data.cpu().numpy()
+        
+        feats[idx, :] = feat.cpu().detach().numpy()
+        final_outputs[idx, :] = final_output.cpu().detach().numpy()
+    
+    # Plot PDFs for both feature types
+    plt.figure(figsize=(12, 6))
+
+    # PDF for intermediate features
+    plt.subplot(1, 2, 1)
+    sns.kdeplot(feats.flatten(), bw_adjust=0.5)
+    plt.title("PDF of Intermediate Features")
+    plt.xlabel("Feature Value")
+    plt.ylabel("Density")
+    
+    # PDF for final outputs
+    plt.subplot(1, 2, 2)
+    sns.kdeplot(final_outputs.flatten(), bw_adjust=0.5)
+    plt.title("PDF of Final Outputs")
+    plt.xlabel("Output Value")
+    plt.ylabel("Density")
+    
+    plt.tight_layout()
+    plt.savefig(f"{args.model_folder}/pdf.png")
+    plt.show()
 
 if __name__ == "__main__":
     import argparse
@@ -307,10 +377,10 @@ if __name__ == "__main__":
 
 
     # model = ResNet(BasicBlock, [2,2,2,2], args.n_unlabeled_classes).to(device)
-    model = ResNet(BasicBlock, [2,2,2,2], 32).to(device)
+    model = ResNet(BasicBlock, [2,2,2,2], 20).to(device)
     model.load_state_dict(init_feat_extractor.state_dict(), strict=False)
     # model.center= Parameter(torch.Tensor(args.n_unlabeled_classes, args.n_unlabeled_classes))
-    model.center= Parameter(torch.Tensor(args.n_unlabeled_classes, 32))
+    model.center= Parameter(torch.Tensor(args.n_unlabeled_classes, 20))
     model.center.data = torch.tensor(init_centers).float().to(device)
 
     print(model)
