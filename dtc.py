@@ -324,16 +324,16 @@ def plot_pdf(model, test_loader, args):
     plt.savefig(f"{args.model_folder}/pdf_individual.png")
     plt.show()
     
-    # Combined PDF overlay
-    plt.figure(figsize=(8, 6))
-    sns.kdeplot(feats.flatten(), bw_adjust=0.5, color='blue', label="Intermediate Features")
-    sns.kdeplot(final_outputs.flatten(), bw_adjust=0.5, color='green', label="Final Outputs")
-    plt.title("Combined PDF of Intermediate Features and Final Outputs")
-    plt.xlabel("Value")
-    plt.ylabel("Density")
-    plt.legend()
-    plt.savefig(f"{args.model_folder}/pdf_combined.png")
-    plt.show()
+    # # Combined PDF overlay
+    # plt.figure(figsize=(8, 6))
+    # sns.kdeplot(feats.flatten(), bw_adjust=0.5, color='blue', label="Intermediate Features")
+    # sns.kdeplot(final_outputs.flatten(), bw_adjust=0.5, color='green', label="Final Outputs")
+    # plt.title("Combined PDF of Intermediate Features and Final Outputs")
+    # plt.xlabel("Value")
+    # plt.ylabel("Density")
+    # plt.legend()
+    # plt.savefig(f"{args.model_folder}/pdf_combined.png")
+    # plt.show()
 
 if __name__ == "__main__":
     import argparse
