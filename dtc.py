@@ -238,6 +238,53 @@ def TEP_train(model, train_loader, eva_loader, args):
     torch.save(model.state_dict(), args.model_dir)
     print("model saved to {}.".format(args.model_dir))
 
+def PI_TE_train(model, train_loader, eva_loader, args):
+    '''
+     Sharpening the probability distribution and Temporal Ensembling (TE) , calculate the temporal average of the probability distribution and enforce consistency with the temporal average
+    '''
+    optimizer = SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    w = 0
+    alpha = 0.6
+    ntrain = len(train_loader.dataset)
+    Z = torch.zeros(ntrain, args.n_unlabeled_classes).float().to(device)        # intermediate values
+    z_ema = torch.zeros(ntrain, args.n_unlabeled_classes).float().to(device)        # temporal outputs
+    z_epoch = torch.zeros(ntrain, args.n_unlabeled_classes).float().to(device)  # current outputs
+    for epoch in range(args.epochs):
+        loss_record = AverageMeter()
+        model.train()
+        w = args.rampup_coefficient * ramps.sigmoid_rampup(epoch, args.rampup_length) 
+        for batch_idx, ((x, x_bar), label, idx) in enumerate(tqdm(train_loader)):
+            x, x_bar = x.to(device), x_bar.to(device)
+            feat = model(x) # get the feature from the model
+            prob = feat2prob(feat, model.center) # get the probability distribution by calculating distance from the center
+        
+            sharp_loss = F.kl_div(prob.log(), args.p_targets[idx].float().to(device)) # calculate the KL divergence loss between the probability distribution and the target distribution
+
+            feat_bar = model(x_bar)  # get the feature of the augmented image
+            prob_bar = feat2prob(feat_bar, model.center) #  get the probability distribution of the augmented image
+            consistency_loss_PI = F.mse_loss(prob, prob_bar)  # calculate the mean squared error loss between the probability distribution and the probability distribution of the augmented image
+
+            z_epoch[idx, :] = prob # store the probability distribution
+            prob_bar_temp = Variable(z_ema[idx, :], requires_grad=False) # get the temporal average of the probability distribution
+            consistency_loss_TE = F.mse_loss(prob, prob_bar_temp) # calculate the mean squared error loss between the probability distribution and the temporal average of the probability distribution
+
+            loss = sharp_loss + consistency_loss_PI  +  w * consistency_loss_TE  # calculate the total loss
+            loss_record.update(loss.item(), x.size(0))
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+        Z = alpha * Z + (1. - alpha) * z_epoch  # calculate the intermediate values
+        z_ema = Z * (1. / (1. - alpha ** (epoch + 1)))  # calculate the temporal average of the probability distribution
+        print('Train Epoch: {} Avg Loss: {:.4f}'.format(epoch, loss_record.avg))
+        _, _, _, probs = test(model, eva_loader, args)
+        if epoch % args.update_interval ==0:
+            print('updating target ...')
+            args.p_targets = target_distribution(probs)  # update the target distribution
+    torch.save(model.state_dict(), args.model_dir)
+    print("model saved to {}.".format(args.model_dir))
+
+
 def test(model, test_loader, args):
     model.eval()
     preds=np.array([])
@@ -412,6 +459,8 @@ if __name__ == "__main__":
         TE_train(model, train_loader, eval_loader, args)
     elif args.DTC == 'TEP':
         TEP_train(model, train_loader, eval_loader, args)
+    elif args.DTC == 'PI_TEC':
+        PI_TE_train(model, train_loader, eval_loader, args)
 
     # Final ACC and plot tsne and pdf
     acc, nmi, ari, _ = test(model, eval_loader, args)
