@@ -270,10 +270,9 @@ def plot_tsne(model, test_loader, args):
     for batch_idx, (x, label, idx) in enumerate(tqdm(test_loader)):
         x, label = x.to(device), label.to(device)
         
-        feat = model.extract_feature(x)  # Extract intermediate layer features
+        feat = model(x)  # Extract intermediate layer features
         targets = np.append(targets, label.cpu().numpy())
         idx = idx.data.cpu().numpy()
-        
         feats[idx, :] = feat.cpu().detach().numpy()
 
     # Perform t-SNE on the extracted features
