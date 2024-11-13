@@ -413,7 +413,7 @@ if __name__ == "__main__":
 
     # Final ACC and plot tsne and pdf
     acc, nmi, ari, _ = test(model, eval_loader, args)
-    plot_tsne(model, eval_loader, args)
+    # plot_tsne(model, eval_loader, args)
     plot_pdf(model, eval_loader, args)
 
     print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
