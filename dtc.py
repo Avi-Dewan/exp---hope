@@ -378,7 +378,8 @@ if __name__ == "__main__":
 
 
     model = ResNet(BasicBlock, [2,2,2,2], 5).to(device)
-    model.load_state_dict(torch.load(args.pretrain_dir), strict=False)
+    model.load_state_dict(torch.load(args.pretrain_dir, weights_only=True), strict=False)
+    # model.load_state_dict(torch.load(args.pretrain_dir), strict=False)
     model.linear= Identity()
     init_feat_extractor = model
     init_acc, init_nmi, init_ari, init_centers, init_probs = init_prob_kmeans(init_feat_extractor, eval_loader, args)
