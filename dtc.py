@@ -238,7 +238,7 @@ def TEP_train(model, train_loader, eva_loader, args):
     torch.save(model.state_dict(), args.model_dir)
     print("model saved to {}.".format(args.model_dir))
 
-def test(model, test_loader, args, tsne=False):
+def test(model, test_loader, args):
     model.eval()
     preds=np.array([])
     targets=np.array([])
@@ -400,7 +400,12 @@ if __name__ == "__main__":
         TE_train(model, train_loader, eval_loader, args)
     elif args.DTC == 'TEP':
         TEP_train(model, train_loader, eval_loader, args)
+
+    # Final ACC and plot tsne and pdf
     acc, nmi, ari, _ = test(model, eval_loader, args)
+    plot_tsne(model, eval_loader, args)
+    plot_pdf(model, eval_loader, args)
+
     print('Init ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(init_acc, init_nmi, init_ari))
     print('Final ACC {:.4f}, NMI {:.4f}, ARI {:.4f}'.format(acc, nmi, ari))
     if args.save_txt:
