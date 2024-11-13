@@ -459,7 +459,7 @@ if __name__ == "__main__":
         TE_train(model, train_loader, eval_loader, args)
     elif args.DTC == 'TEP':
         TEP_train(model, train_loader, eval_loader, args)
-    elif args.DTC == 'PI_TEC':
+    elif args.DTC == 'PI_TE':
         PI_TE_train(model, train_loader, eval_loader, args)
 
     # Final ACC and plot tsne and pdf
