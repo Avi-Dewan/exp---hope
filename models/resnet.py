@@ -43,7 +43,7 @@ class ResNet(nn.Module):
         out = self.linear(out)
         return out
     
-    def extractFeature(self, x):
+    def extract_feature(self, x):
         out = F.relu(self.bn1(self.conv1(x)))
         out = self.layer1(out)
         out = self.layer2(out)
