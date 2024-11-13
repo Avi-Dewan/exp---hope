@@ -286,7 +286,7 @@ def plot_tsne(model, test_loader, args):
     plt.show()
 
 def plot_pdf(model, test_loader, args):
-    """Generates PDF plots for intermediate features and final outputs."""
+    """Generates PDF plots for intermediate features, final outputs, and a combined overlay plot."""
     model.eval()
     feats = np.zeros((len(test_loader.dataset), 512))
     final_outputs = np.zeros((len(test_loader.dataset), 20))
@@ -303,25 +303,36 @@ def plot_pdf(model, test_loader, args):
         feats[idx, :] = feat.cpu().detach().numpy()
         final_outputs[idx, :] = final_output.cpu().detach().numpy()
     
-    # Plot PDFs for both feature types
+    # Plot individual PDFs for intermediate features and final outputs
     plt.figure(figsize=(12, 6))
 
     # PDF for intermediate features
     plt.subplot(1, 2, 1)
-    sns.kdeplot(feats.flatten(), bw_adjust=0.5)
+    sns.kdeplot(feats.flatten(), bw_adjust=0.5, color='blue')
     plt.title("PDF of Intermediate Features")
     plt.xlabel("Feature Value")
     plt.ylabel("Density")
     
     # PDF for final outputs
     plt.subplot(1, 2, 2)
-    sns.kdeplot(final_outputs.flatten(), bw_adjust=0.5)
+    sns.kdeplot(final_outputs.flatten(), bw_adjust=0.5, color='green')
     plt.title("PDF of Final Outputs")
     plt.xlabel("Output Value")
     plt.ylabel("Density")
     
     plt.tight_layout()
-    plt.savefig(f"{args.model_folder}/pdf.png")
+    plt.savefig(f"{args.model_folder}/pdf_individual.png")
+    plt.show()
+    
+    # Combined PDF overlay
+    plt.figure(figsize=(8, 6))
+    sns.kdeplot(feats.flatten(), bw_adjust=0.5, color='blue', label="Intermediate Features")
+    sns.kdeplot(final_outputs.flatten(), bw_adjust=0.5, color='green', label="Final Outputs")
+    plt.title("Combined PDF of Intermediate Features and Final Outputs")
+    plt.xlabel("Value")
+    plt.ylabel("Density")
+    plt.legend()
+    plt.savefig(f"{args.model_folder}/pdf_combined.png")
     plt.show()
 
 if __name__ == "__main__":
