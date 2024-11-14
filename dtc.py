@@ -433,8 +433,8 @@ def plot_pdf(model, test_loader, args):
     
     # Combined PDF overlay
     plt.figure(figsize=(8, 6))
-    sns.kdeplot(extracted_features.flatten(), bw_adjust=0.5, color='blue', label="Intermediate Features")
-    sns.kdeplot(final_features.flatten(), bw_adjust=0.5, color='green', label="Final Outputs")
+    sns.kdeplot(extracted_feats.flatten(), bw_adjust=0.5, color='blue', label="Intermediate Features")
+    sns.kdeplot(final_feats.flatten(), bw_adjust=0.5, color='green', label="Final Outputs")
     plt.title("Combined PDF of Intermediate Features and Final Outputs")
     plt.xlabel("Value")
     plt.ylabel("Density")
