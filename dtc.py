@@ -291,7 +291,7 @@ def PI_TE_train(model, train_loader, eva_loader, args):
     print("model saved to {}.".format(args.model_dir))
 
 
-def PI_CL(model, train_loader, eva_loader, args):
+def PI_CL_train(model, train_loader, eva_loader, args):
     '''
     Sharpening the probability distribution and enforcing consistency with different augmentations
     '''
@@ -528,6 +528,8 @@ if __name__ == "__main__":
         TEP_train(model, train_loader, eval_loader, args)
     elif args.DTC == 'PI_TE':
         PI_TE_train(model, train_loader, eval_loader, args)
+    elif args.DTC == 'PI_CL':
+        PI_CL_train(model, train_loader, eval_loader, args)
 
     # Final ACC and plot tsne and pdf
     acc, nmi, ari, _ = test(model, eval_loader, args)
