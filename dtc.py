@@ -294,6 +294,8 @@ def PI_CL(model, train_loader, eva_loader, args):
     Sharpening the probability distribution and enforcing consistency with different augmentations
     '''
 
+    criterion = SimCLR_Loss(batch_size = 128, temperature = 0.5)
+
     optimizer = SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     w = 0
     # Lists to store metrics for each epoch
