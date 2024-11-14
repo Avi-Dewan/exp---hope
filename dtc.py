@@ -11,8 +11,10 @@ from sklearn.decomposition import PCA
 from utils.util import cluster_acc, Identity, AverageMeter, seed_torch, str2bool
 from utils import ramps 
 from models.resnet import ResNet, BasicBlock 
+from models.preModel import ProjectionHead
 from modules.module import feat2prob, target_distribution 
 from data.cifarloader import CIFAR10Loader
+from utils.simCLR_loss import SimCLR_Loss
 from tqdm import tqdm
 import numpy as np
 import warnings
@@ -294,9 +296,10 @@ def PI_CL(model, train_loader, eva_loader, args):
     Sharpening the probability distribution and enforcing consistency with different augmentations
     '''
 
-    criterion = SimCLR_Loss(batch_size = 128, temperature = 0.5)
+    simCLR_loss = SimCLR_Loss(batch_size = 128, temperature = 0.5).to(device)
+    projector = ProjectionHead(512 * BasicBlock.expansion, 2048, 128).to(device)
 
-    optimizer = SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    optimizer = SGD(list(model.parameters()) + list(projector.parameters()), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     w = 0
     # Lists to store metrics for each epoch
     accuracies = []
@@ -309,17 +312,19 @@ def PI_CL(model, train_loader, eva_loader, args):
         w = args.rampup_coefficient * ramps.sigmoid_rampup(epoch, args.rampup_length) 
         for batch_idx, ((x, x_bar), label, idx) in enumerate(tqdm(train_loader)):
             x, x_bar = x.to(device), x_bar.to(device)
-            _, final_feat = model(x) # model.forward() returns two values: Extracted Features(extracted_feat), Final Features(final_feat)
-            _, final_feat_bar = model(x_bar)  # get the feature of the augmented image
+            extracted_feat, final_feat = model(x) # model.forward() returns two values: Extracted Features(extracted_feat), Final Features(final_feat)
+            extracted_feat_bar, final_feat_bar = model(x_bar)  # get the feature of the augmented image
             prob = feat2prob(final_feat, model.center) # get the probability distribution by calculating distance from the center
             prob_bar = feat2prob(final_feat_bar, model.center) #  get the probability distribution of the augmented image
            
             sharp_loss = F.kl_div(prob.log(), args.p_targets[idx].float().to(device)) # calculate the KL divergence loss between the probability distribution and the target distribution
             consistency_loss = F.mse_loss(prob, prob_bar)  # calculate the mean squared error loss between the probability distribution and the probability distribution of the augmented image
 
-            # Why MSE ? 
+            # simCLR loss
+            z_i, z_j = projector(extracted_feat), projector(extracted_feat_bar) 
+            contrastive_loss = simCLR_loss(z_i, z_j)
 
-            loss = sharp_loss + w * consistency_loss   # calculate the total loss
+            loss = sharp_loss + w * consistency_loss + w*contrastive_loss  # calculate the total loss
             loss_record.update(loss.item(), x.size(0))
             optimizer.zero_grad()
             loss.backward()
