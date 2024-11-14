@@ -23,7 +23,7 @@ def train(model, train_loader, labeled_eval_loader, args):
         exp_lr_scheduler.step()
         for batch_idx, (x, label, idx) in enumerate(tqdm(train_loader)): 
             x, label = x.to(device), (label-5).to(device) # map labels from (5-9) to (0-4)
-            output = model(x) # model forward pass
+            _, output = model(x) # model forward pass (gives two output: extracted features and final output)
             loss= criterion(output, label) # cross entopy loss
             loss_record.update(loss.item(), x.size(0)) # Record losses
             optimizer.zero_grad()
@@ -40,7 +40,7 @@ def test(model, test_loader, args):
     
     for batch_idx, (x, label, _) in enumerate(tqdm(test_loader)):
         x, label = x.to(device), label.to(device)
-        output = model(x)
+        _, output = model(x)  # model forward pass (gives two output: extracted features and final output)
         _, pred = output.max(1) # pred will be between 0 to 4
         pred = pred + 5 # map from (0-4) to (5-9)
         targets.extend(label.cpu().numpy())

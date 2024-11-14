@@ -35,8 +35,8 @@ def train(model, device, train_loader, optimizer, scheduler, criterion, epoch, t
         x_i, x_j = x_i.squeeze().to(device).float(), x_j.squeeze().to(device).float()
         
         optimizer.zero_grad()
-        z_i, z_j = model(x_i), model(x_j)
-        loss = criterion(z_i, z_j)
+        z_i, z_j = model(x_i), model(x_j) 
+        loss = criterion(z_i, z_j) # simCLR loss
         loss.backward()
         optimizer.step()
 

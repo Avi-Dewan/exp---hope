@@ -70,6 +70,6 @@ class PreModel(nn.Module):
         self.projector = ProjectionHead(512 * block.expansion, 2048, 128)  # Adjust dimensions if necessary # projection head
 
     def forward(self, x):
-        features = self.feature_extractor(x)
+        _, features = self.feature_extractor(x) # resnet model forward pass (gives two output: extracted features and final output). here both are same
         projections = self.projector(features)
         return projections
