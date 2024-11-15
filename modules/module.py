@@ -77,7 +77,7 @@ def target_distribution(q):
     # Dividing by q.sum(0) normalizes each cluster's contribution relative to its distribution across the batch,
     weight = weight / q.sum(0)  # shape: [batch_size, n_clusters]
 
-    # Step 3: Normalize each row to make a valid probability distribution.
+    # Normalize each row to make a valid probability distribution.
     # Transpose weight to [n_clusters, batch_size], divide each element by the sum of its row (axis=1),
     # then transpose back to original shape [batch_size, n_clusters].
     # This row-wise normalization ensures that each sample’s distribution across clusters sums to 1.
