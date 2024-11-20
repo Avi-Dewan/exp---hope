@@ -275,7 +275,7 @@ def main():
         print(f"Epoch [{epoch}/{args.epochs}] Time Taken: {time_taken:.2f} minutes")
 
         # Plot features every 50 epochs
-        if epoch > 0 and (epoch+1) % 50 == 0:
+        if epoch > 0 and (epoch+1) % args.save_interval == 0:
             plot_features(model.feature_extractor, dloader_unlabeled_test, 
                            model_dir, epoch+1, device, args)
         
