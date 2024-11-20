@@ -397,9 +397,7 @@ def PI_CL_BCE_train(model, train_loader, eva_loader, args):
             rank_feat = extracted_feat.detach()
             rank_idx = torch.argsort(rank_feat, dim=1, descending=True) # [68, 512] --> index of features. sorted by value
             rank_idx1, rank_idx2= PairEnum(rank_idx) # [68*68, 512], [68*68, 512]
-            print(rank_idx1.shape)
             rank_idx1, rank_idx2=rank_idx1[:, :args.topk], rank_idx2[:, :args.topk] # [68*68, 5], [68*68, 5]
-            print(rank_idx1.shape)
             rank_idx1, _ = torch.sort(rank_idx1, dim=1) # [68*68, 5]
             rank_idx2, _ = torch.sort(rank_idx2, dim=1) # [68*68, 5]
 
@@ -558,6 +556,7 @@ if __name__ == "__main__":
     parser.add_argument('--update_interval', default=5, type=int)
     parser.add_argument('--n_unlabeled_classes', default=5, type=int)
     parser.add_argument('--n_labeled_classes', default=5, type=int)
+    parser.add_argument('--topk', default=5, type=int)
     parser.add_argument('--seed', default=1, type=int)
     parser.add_argument('--save_txt', default=False, type=str2bool, help='save txt or not', metavar='BOOL')
     parser.add_argument('--pretrain_dir', type=str, default='./data/experiments/cifar10_classif/resnet18_cifar10_classif_5.pth')
