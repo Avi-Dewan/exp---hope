@@ -22,10 +22,10 @@ def train(model, train_loader, labeled_eval_loader, args):
         model.train()
         exp_lr_scheduler.step()
         for batch_idx, (x, label, idx) in enumerate(tqdm(train_loader)): 
-            x, label = x.to(device), (label-5).to(device) # map labels from (5-9) to (0-4)
+            x, label = x.to(device), label.to(device) 
             _, output = model(x) # model forward pass (gives two output: extracted features and final output)
             loss= criterion(output, label) # cross entopy loss
-            loss_record.update(loss.item(), x.size(0)) # Record losses
+            loss_record.update(loss.item(), x.size(0)) 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -41,8 +41,8 @@ def test(model, test_loader, args):
     for batch_idx, (x, label, _) in enumerate(tqdm(test_loader)):
         x, label = x.to(device), label.to(device)
         _, output = model(x)  # model forward pass (gives two output: extracted features and final output)
-        _, pred = output.max(1) # pred will be between 0 to 4
-        pred = pred + 5 # map from (0-4) to (5-9)
+        _, pred = output.max(1) 
+        pred = pred
         targets.extend(label.cpu().numpy())
         preds.extend(pred.cpu().numpy())
     
@@ -97,8 +97,8 @@ if __name__ == "__main__":
     #         param.requires_grad = False
  
     if args.dataset_name == 'cifar10':
-        labeled_train_loader = CIFAR10Loader(root=args.dataset_root, batch_size=args.batch_size, split='train', aug='once', shuffle=True, target_list = range(5, 10))
-        labeled_eval_loader = CIFAR10Loader(root=args.dataset_root, batch_size=args.batch_size, split='test', aug=None, shuffle=False, target_list = range(5, 10))
+        labeled_train_loader = CIFAR10Loader(root=args.dataset_root, batch_size=args.batch_size, split='train', aug='once', shuffle=True, target_list = range(args.num_labeled_classes))
+        labeled_eval_loader = CIFAR10Loader(root=args.dataset_root, batch_size=args.batch_size, split='test', aug=None, shuffle=False, target_list = range(args.num_labeled_classes))
     elif args.dataset_name == 'cifar100':
         labeled_train_loader = CIFAR100Loader(root=args.dataset_root, batch_size=args.batch_size, split='train', aug='once', shuffle=True, target_list = range(args.num_labeled_classes))
         labeled_eval_loader = CIFAR100Loader(root=args.dataset_root, batch_size=args.batch_size, split='test', aug=None, shuffle=False, target_list = range(args.num_labeled_classes))
