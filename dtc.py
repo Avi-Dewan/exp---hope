@@ -357,25 +357,6 @@ def PI_CL_train(model, train_loader, eva_loader, args):
     plt.legend()
     plt.savefig(args.model_folder+'/accuracies.png')   
 
-def test(model, test_loader, args):
-    model.eval()
-    preds=np.array([])
-    targets=np.array([])
-    probs= np.zeros((len(test_loader.dataset), args.n_unlabeled_classes))
-    for batch_idx, (x, label, idx) in enumerate(tqdm(test_loader)):
-        x, label = x.to(device), label.to(device)
-        _, final_feat = model(x) # model.forward() returns two values: Extracted Features(extracted_feat), Final Features(final_feat)
-        prob = feat2prob(final_feat, model.center) # get the probability distribution by calculating distance from the center
-        _, pred = prob.max(1)
-        targets=np.append(targets, label.cpu().numpy())
-        preds=np.append(preds, pred.cpu().numpy())
-        idx = idx.data.cpu().numpy()
-        probs[idx, :] = prob.cpu().detach().numpy()
-    acc, nmi, ari = cluster_acc(targets.astype(int), preds.astype(int)), nmi_score(targets, preds), ari_score(targets, preds)
-    print('Test acc {:.4f}, nmi {:.4f}, ari {:.4f}'.format(acc, nmi, ari))
-    probs = torch.from_numpy(probs)
-
-    return acc, nmi, ari, probs 
 
 def PI_CL_BCE_train(model, train_loader, eva_loader, args):
     '''
@@ -463,6 +444,26 @@ def PI_CL_BCE_train(model, train_loader, eva_loader, args):
     plt.title("Training Metrics over Epochs")
     plt.legend()
     plt.savefig(args.model_folder+'/accuracies.png')   
+
+def test(model, test_loader, args):
+    model.eval()
+    preds=np.array([])
+    targets=np.array([])
+    probs= np.zeros((len(test_loader.dataset), args.n_unlabeled_classes))
+    for batch_idx, (x, label, idx) in enumerate(tqdm(test_loader)):
+        x, label = x.to(device), label.to(device)
+        _, final_feat = model(x) # model.forward() returns two values: Extracted Features(extracted_feat), Final Features(final_feat)
+        prob = feat2prob(final_feat, model.center) # get the probability distribution by calculating distance from the center
+        _, pred = prob.max(1)
+        targets=np.append(targets, label.cpu().numpy())
+        preds=np.append(preds, pred.cpu().numpy())
+        idx = idx.data.cpu().numpy()
+        probs[idx, :] = prob.cpu().detach().numpy()
+    acc, nmi, ari = cluster_acc(targets.astype(int), preds.astype(int)), nmi_score(targets, preds), ari_score(targets, preds)
+    print('Test acc {:.4f}, nmi {:.4f}, ari {:.4f}'.format(acc, nmi, ari))
+    probs = torch.from_numpy(probs)
+
+    return acc, nmi, ari, probs 
 
 
 def plot_tsne(model, test_loader, args):
@@ -617,6 +618,8 @@ if __name__ == "__main__":
     elif args.DTC == 'PI_TE':
         PI_TE_train(model, train_loader, eval_loader, args)
     elif args.DTC == 'PI_CL':
+        PI_CL_train(model, train_loader, eval_loader, args)
+    elif args.DTC == 'PI_CL_BCE':
         PI_CL_train(model, train_loader, eval_loader, args)
 
     # Final ACC and plot tsne and pdf
