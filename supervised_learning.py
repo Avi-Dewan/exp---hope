@@ -106,6 +106,10 @@ if __name__ == "__main__":
         labeled_train_loader = SVHNLoader(root=args.dataset_root, batch_size=args.batch_size, split='train', aug='once', shuffle=True, target_list = range(args.num_labeled_classes))
         labeled_eval_loader = SVHNLoader(root=args.dataset_root, batch_size=args.batch_size, split='test', aug=None, shuffle=False, target_list = range(args.num_labeled_classes))
 
+    for batch_idx, (x, label, idx) in enumerate(tqdm(labeled_train_loader)):
+        print(label)
+        break
+
     if args.mode == 'train':
         train(model, labeled_train_loader, labeled_eval_loader, args) # fine tune using labeled data
         torch.save(model.state_dict(), args.model_dir)
