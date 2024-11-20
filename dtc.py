@@ -324,7 +324,7 @@ def PI_CL_train(model, train_loader, eva_loader, args):
             z_i, z_j = projector(extracted_feat), projector(extracted_feat_bar) 
             contrastive_loss = simCLR_loss(z_i, z_j)
 
-            loss = sharp_loss + w * consistency_loss + w*contrastive_loss  # calculate the total loss
+            loss = sharp_loss + contrastive_loss  + w * consistency_loss  # calculate the total loss
             loss_record.update(loss.item(), x.size(0))
             optimizer.zero_grad()
             loss.backward()
