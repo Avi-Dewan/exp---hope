@@ -365,7 +365,7 @@ def PI_CL_BCE_train(model, train_loader, eva_loader, args):
 
     simCLR_loss = SimCLR_Loss(batch_size = 128, temperature = 0.5).to(device)
     projector = ProjectionHead(512 * BasicBlock.expansion, 2048, 128).to(device)
-    bce_loss = BCE()
+    criterion_bce = BCE()
 
     optimizer = SGD(list(model.parameters()) + list(projector.parameters()), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     w = 0
@@ -409,7 +409,7 @@ def PI_CL_BCE_train(model, train_loader, eva_loader, args):
             prob_pair, _ = PairEnum(prob)
             _, prob_bar_pair = PairEnum(prob_bar)
 
-            bce_loss = bce_loss(prob_pair, prob_bar_pair, pairwise_pseudo_label)
+            bce_loss = criterion_bce(prob_pair, prob_bar_pair, pairwise_pseudo_label)
 
 
             loss = sharp_loss + w * consistency_loss + w*contrastive_loss + w * bce_loss # calculate the total loss
