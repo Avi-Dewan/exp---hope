@@ -397,7 +397,9 @@ def PI_CL_BCE_train(model, train_loader, eva_loader, args):
             rank_feat = extracted_feat.detach()
             rank_idx = torch.argsort(rank_feat, dim=1, descending=True) # [68, 512] --> index of features. sorted by value
             rank_idx1, rank_idx2= PairEnum(rank_idx) # [68*68, 512], [68*68, 512]
+            print(rank_idx1.shape)
             rank_idx1, rank_idx2=rank_idx1[:, :args.topk], rank_idx2[:, :args.topk] # [68*68, 5], [68*68, 5]
+            print(rank_idx1.shape)
             rank_idx1, _ = torch.sort(rank_idx1, dim=1) # [68*68, 5]
             rank_idx2, _ = torch.sort(rank_idx2, dim=1) # [68*68, 5]
 
