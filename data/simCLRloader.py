@@ -65,22 +65,36 @@ class SimCLRDataset(data.Dataset):
                 root = dataset_root, train=self.split=='train',
                 download=True, transform=self.transform)
             
-        # elif self.dataset_name=='cifar100':
-        #     self.mean_pix = [x/255.0 for x in [129.3, 124.1, 112.4]]
-        #     self.std_pix = [x/255.0 for x in [68.2, 65.4, 70.4]]
+        elif self.dataset_name=='cifar100':
+            self.mean_pix = [x/255.0 for x in [129.3, 124.1, 112.4]]
+            self.std_pix = [x/255.0 for x in [68.2, 65.4, 70.4]]
+            
+            if split != 'test':
+                self.transform = transforms.Compose([
+                    transforms.RandomHorizontalFlip(0.5),
+                    transforms.RandomResizedCrop(32, scale=(0.8, 1.0)),
+                    transforms.RandomApply([
+                        transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1)
+                    ], p=0.8),
+                    transforms.RandomGrayscale(p=0.2),
+                    transforms.RandomRotation(5),
+                    transforms.GaussianBlur(kernel_size=9),
+                    transforms.ToTensor(),
+                    transforms.Normalize(self.mean_pix, self.std_pix)
+                ])
+            else:
+                self.transform = transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize(self.mean_pix, self.std_pix)
+                ])
 
-        #     if self.random_sized_crop:
-        #         raise ValueError('The random size crop option is not supported for the CIFAR dataset')
+            self.transform = ContrastiveTransformations(self.transform, n_views=2)
 
-        #     transform = []
-        #     if (split != 'test'):
-        #         transform.append(transforms.RandomCrop(32, padding=4))
-        #         transform.append(transforms.RandomHorizontalFlip())
-        #     transform.append(lambda x: np.asarray(x))
-        #     self.transform = transforms.Compose(transform)
-        #     self.data = datasets.__dict__[self.dataset_name.upper()](
-        #         dataset_root, train=self.split=='train',
-        #         download=True, transform=self.transform)
+            self.data = datasets.__dict__[self.dataset_name.upper()](
+                root = dataset_root, train=self.split=='train',
+                download=True, transform=self.transform)
+
+            
         # elif self.dataset_name=='svhn':
         #     self.mean_pix = [0.485, 0.456, 0.406]
         #     self.std_pix = [0.229, 0.224, 0.225]

@@ -192,14 +192,23 @@ def main():
         num_workers=args.num_workers,
         shuffle=False,
         drop_last=True)
-
-    dloader_unlabeled_test = CIFAR10Loader(
-        root=args.dataset_root, 
-        batch_size=128, 
-        split='test', 
-        aug=None, 
-        shuffle=False, 
-        target_list = range(5, 10))
+    
+    if args.dataset_name == 'cifar10':
+        dloader_unlabeled_test = CIFAR10Loader(
+            root=args.dataset_root, 
+            batch_size=128, 
+            split='test', 
+            aug=None, 
+            shuffle=False, 
+            target_list = range(5, 10))
+    elif args.dataset_name == 'cifar100':
+        dloader_unlabeled_test = CIFAR100Loader(
+            root=args.dataset_root, 
+            batch_size=128, 
+            split='test', 
+            aug=None, 
+            shuffle=False, 
+            target_list = range(80, 100))
    
     num_blocks = [2, 2, 2, 2]  # Example for ResNet-18
     model = PreModel(BasicBlock, num_blocks) # Feature Extractor -> Projection Head

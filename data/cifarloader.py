@@ -326,10 +326,25 @@ def CIFAR100Data(root, split='train', aug=None, target_list=range(80)):
     dataset = CIFAR100(root=root, split=split, transform=transform, target_list=target_list)
     return dataset
 
-def CIFAR100Loader(root, batch_size, split='train', num_workers=2,  aug=None, shuffle=True, target_list=range(80)):
-    dataset = CIFAR100Data(root, split, aug,target_list)
-    loader = data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
+
+def CIFAR100Loader(root, batch_size, split='train', num_workers=2,  aug=None, shuffle=True, target_list=range(80), drop_last = True):
+
+    dataset = CIFAR100Data(root, split, aug, target_list)
+    
+    # Determine the number of samples to drop if drop_last is True
+    if drop_last:
+        num_samples = len(dataset)
+        num_batches = num_samples // batch_size
+        indices = list(range(num_batches * batch_size))  # Adjust the indices to ensure full batches
+        dataset = data.Subset(dataset, indices)
+    
+    loader = data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, drop_last=drop_last)
     return loader
+
+# def CIFAR100Loader(root, batch_size, split='train', num_workers=2,  aug=None, shuffle=True, target_list=range(80)):
+#     dataset = CIFAR100Data(root, split, aug,target_list)
+#     loader = data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
+#     return loader
 
 def CIFAR100LoaderMix(root, batch_size, split='train',num_workers=2, aug=None, shuffle=True, labeled_list=range(80), unlabeled_list=range(90, 100)):
     dataset_labeled = CIFAR100Data(root, split, aug, labeled_list)
