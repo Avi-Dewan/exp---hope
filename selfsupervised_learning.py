@@ -104,7 +104,7 @@ def plot_features(model, test_loader, save_path, epoch, device,  args):
     
     for batch_idx, (x, label, idx) in enumerate(tqdm(test_loader)):
         x, label = x.to(device), label.to(device)
-        output = model(x)
+        _, output = model(x)
        
         outputs[idx, :] = output.cpu().detach().numpy()
         targets=np.append(targets, label.cpu().numpy())
@@ -144,7 +144,9 @@ def main():
     parser.add_argument('--seed', type=int, default=1,
                                     help='random seed (default: 1)')
     parser.add_argument('--epochs', type=int, default=300, metavar='N',
-                        help='number of epochs to train (default: 200)')
+                        help='number of epochs to train (default: 300)')
+    parser.add_argument('--save_interval', type=int, default=50, metavar='I',
+                        help='Interval to save the model and plot tsne(default: 50)')
     parser.add_argument('--lr', type=float, default=0.1, metavar='LR',
                         help='learning rate (default: 0.1)')
     parser.add_argument('--momentum', type=float, default=0.9, metavar='M',
@@ -273,7 +275,7 @@ def main():
         print(f"Epoch [{epoch}/{args.epochs}] Time Taken: {time_taken:.2f} minutes")
 
         # Plot features every 50 epochs
-        if epoch > 48 and (epoch+1) % 50 == 0:
+        if epoch > 0 and (epoch+1) % 50 == 0:
             plot_features(model.feature_extractor, dloader_unlabeled_test, 
                            model_dir, epoch+1, device, args)
         
