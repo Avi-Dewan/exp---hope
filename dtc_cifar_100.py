@@ -397,7 +397,7 @@ def plot_tsne(model, test_loader, args):
     plt.figure(figsize=(8, 6))
     plt.scatter(X_embedded[:, 0], X_embedded[:, 1], c=targets, cmap='viridis', s=5, alpha=0.7)
     plt.colorbar()
-    plt.title("t-SNE Visualization of Learned Features on Unlabeled CIFAR-10 Subset")
+    plt.title("t-SNE Visualization of Learned Features on Unlabeled data")
     plt.savefig(f"{args.model_folder}/tsne.png")
     plt.show()
 
@@ -514,6 +514,8 @@ if __name__ == "__main__":
     for name, param in model.named_parameters(): 
         if 'linear' not in name and 'layer4' not in name:
             param.requires_grad = False
+    
+    
 
     warmup_train(model, train_loader, eval_loader, args)
 
