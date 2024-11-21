@@ -492,7 +492,7 @@ if __name__ == "__main__":
     eval_loader = CIFAR100Loader(root=args.dataset_root, batch_size=args.batch_size, split='train', aug=None, shuffle=False, target_list=range(args.n_labeled_classes, args.n_labeled_classes+args.n_unlabeled_classes))
 
 
-    model = ResNet(BasicBlock, [2,2,2,2], 5).to(device)
+    model = ResNet(BasicBlock, [2,2,2,2], 80).to(device)
     model.load_state_dict(torch.load(args.pretrain_dir, weights_only=True), strict=False)
     # model.load_state_dict(torch.load(args.pretrain_dir), strict=False)
     model.linear= Identity()
