@@ -13,7 +13,7 @@ from utils import ramps
 from models.resnet import ResNet, BasicBlock 
 from models.preModel import ProjectionHead
 from modules.module import feat2prob, target_distribution 
-from data.cifarloader import CIFAR10Loader
+from data.cifarloader import CIFAR10Loader, CIFAR100Loader
 from utils.simCLR_loss import SimCLR_Loss
 from tqdm import tqdm
 import numpy as np
@@ -465,8 +465,8 @@ if __name__ == "__main__":
     parser.add_argument('--rampup_coefficient', type=float, default=10.0)
     parser.add_argument('--batch_size', default=128, type=int)
     parser.add_argument('--update_interval', default=5, type=int)
-    parser.add_argument('--n_unlabeled_classes', default=5, type=int)
-    parser.add_argument('--n_labeled_classes', default=5, type=int)
+    parser.add_argument('--n_unlabeled_classes', default=20, type=int)
+    parser.add_argument('--n_labeled_classes', default=80, type=int)
     parser.add_argument('--seed', default=1, type=int)
     parser.add_argument('--save_txt', default=False, type=str2bool, help='save txt or not', metavar='BOOL')
     parser.add_argument('--pretrain_dir', type=str, default='./data/experiments/cifar10_classif/resnet18_cifar10_classif_5.pth')
@@ -488,8 +488,8 @@ if __name__ == "__main__":
     args.model_dir = model_dir+'/'+args.model_name+'.pth'
     args.save_txt_path= args.exp_root+ '{}/{}/{}'.format(runner_name, args.DTC, args.save_txt_name)
 
-    train_loader = CIFAR10Loader(root=args.dataset_root, batch_size=args.batch_size, split='train', aug='twice', shuffle=True, target_list=range(args.n_labeled_classes, args.n_labeled_classes+args.n_unlabeled_classes))
-    eval_loader = CIFAR10Loader(root=args.dataset_root, batch_size=args.batch_size, split='train', aug=None, shuffle=False, target_list=range(args.n_labeled_classes, args.n_labeled_classes+args.n_unlabeled_classes))
+    train_loader = CIFAR100Loader(root=args.dataset_root, batch_size=args.batch_size, split='train', aug='twice', shuffle=True, target_list=range(args.n_labeled_classes, args.n_labeled_classes+args.n_unlabeled_classes))
+    eval_loader = CIFAR100Loader(root=args.dataset_root, batch_size=args.batch_size, split='train', aug=None, shuffle=False, target_list=range(args.n_labeled_classes, args.n_labeled_classes+args.n_unlabeled_classes))
 
 
     model = ResNet(BasicBlock, [2,2,2,2], 5).to(device)
