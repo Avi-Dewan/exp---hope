@@ -69,6 +69,22 @@ class BCE(nn.Module):
         P.mul_(simi).add_(simi.eq(-1).type_as(P))
         neglogP = -P.add_(BCE.eps).log_()
         return neglogP.mean()
+    
+
+class myBCE(nn.Module):
+    
+    def forward(self, prob1, prob2, simi):
+        # Prepare binary similarity labels
+        binary_simi = (simi == 1).float()  # Convert similar (1) to 1, dissimilar (-1) to 0
+        mask = simi != 0  # Mask for valid pairs
+        
+        # Compute pairwise probabilities
+        pair_probs = (prob1 * prob2).sum(dim=1)  # Pairwise probabilities
+
+        # Compute traditional BCE loss
+        loss = F.binary_cross_entropy(pair_probs[mask], binary_simi[mask], reduction='mean')
+        return loss
+
 
 def PairEnum(x,mask=None):
     # Enumerate all pairs of feature in x
