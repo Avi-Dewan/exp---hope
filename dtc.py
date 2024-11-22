@@ -811,8 +811,8 @@ if __name__ == "__main__":
         PI_CL_BCE_train(model, train_loader, eval_loader, args)
     elif args.DTC == 'PI_CL_myBCE':
         PI_CL_myBCE_train(model, train_loader, eval_loader, args)
-    elif args.DTC == 'PI_CL_BCESoft':
-        PI_CL_myBCE_train(model, train_loader, eval_loader, args)
+    elif args.DTC == 'PI_CL_softBCE':
+        PI_CL_softBCE_train(model, train_loader, eval_loader, args)
 
     # Final ACC and plot tsne and pdf
     acc, nmi, ari, _ = test(model, eval_loader, args)
