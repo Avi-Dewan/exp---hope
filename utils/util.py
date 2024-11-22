@@ -88,31 +88,27 @@ class myBCE(nn.Module):
 class softBCE_F(nn.Module):
 
     def forward(self, prob1, prob2, simi):
-        # Prepare binary similarity labels
-        binary_simi = simi.float()  
-        
+    
         # Compute pairwise probabilities
         pair_probs = (prob1 * prob2).sum(dim=1)  # Pairwise probabilities
 
         # Compute traditional BCE loss
-        loss = F.binary_cross_entropy(pair_probs, binary_simi, reduction='mean')
+        loss = F.binary_cross_entropy(pair_probs, simi, reduction='mean')
         return loss
 
-# class softBCE(nn.Module):
-#     def __init__(self):
-#         super(myBCE, self).__init__()
-#         self.bce_with_logits = nn.BCEWithLogitsLoss(reduction='mean')  # Use BCEWithLogitsLoss
+class softBCE_N(nn.Module):
+    def __init__(self):
+        super(myBCE, self).__init__()
+        self.bce_with_logits = nn.BCEWithLogitsLoss(reduction='mean')  # Use BCEWithLogitsLoss
 
-#     def forward(self, logits1, logits2, simi):
-#         # Mask for valid pairs
-#         mask = simi != 0  # Exclude unknown pairs (simi = 0)
+    def forward(self, logits1, logits2, simi):
+ 
+        # Compute pairwise logits (dot product or another similarity measure)
+        pair_logits = (logits1 * logits2).sum(dim=1)  # Pairwise logits
 
-#         # Compute pairwise logits (dot product or another similarity measure)
-#         pair_logits = (logits1 * logits2).sum(dim=1)  # Pairwise logits
-
-#         # Compute BCE loss with logits
-#         loss = self.bce_with_logits(pair_logits[mask], simi[mask])
-#         return loss
+        # Compute BCE loss with logits
+        loss = self.bce_with_logits(pair_logits, simi)
+        return loss
 
 
 def PairEnum(x,mask=None):

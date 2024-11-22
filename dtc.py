@@ -8,7 +8,7 @@ from sklearn.metrics.cluster import normalized_mutual_info_score as nmi_score
 from sklearn.metrics import adjusted_rand_score as ari_score
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-from utils.util import cluster_acc, Identity, AverageMeter, seed_torch, str2bool, PairEnum, BCE, myBCE, softBCE_F
+from utils.util import cluster_acc, Identity, AverageMeter, seed_torch, str2bool, PairEnum, BCE, myBCE, softBCE_F, softBCE_N
 from utils import ramps 
 from models.resnet import ResNet, BasicBlock 
 from models.preModel import ProjectionHead
