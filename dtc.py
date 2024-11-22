@@ -8,7 +8,7 @@ from sklearn.metrics.cluster import normalized_mutual_info_score as nmi_score
 from sklearn.metrics import adjusted_rand_score as ari_score
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-from utils.util import cluster_acc, Identity, AverageMeter, seed_torch, str2bool, PairEnum, BCE, myBCE
+from utils.util import cluster_acc, Identity, AverageMeter, seed_torch, str2bool, PairEnum, BCE, myBCE, softBCE_F
 from utils import ramps 
 from models.resnet import ResNet, BasicBlock 
 from models.preModel import ProjectionHead
@@ -542,7 +542,7 @@ def PI_CL_softBCE_train(model, train_loader, eva_loader, args):
 
     simCLR_loss = SimCLR_Loss(batch_size = 128, temperature = 0.5).to(device)
     projector = ProjectionHead(512 * BasicBlock.expansion, 2048, 128).to(device)
-    criterion_bce = myBCE()
+    criterion_bce = softBCE_F()
 
     optimizer = SGD(list(model.parameters()) + list(projector.parameters()), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     w = 0
