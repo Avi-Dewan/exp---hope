@@ -18,12 +18,12 @@ import numpy as np
 
 def sigmoid_rampup(current, rampup_length):
     """Exponential rampup from https://arxiv.org/abs/1610.02242"""
-    if rampup_length == 0:
+    if rampup_length == 0: # If rampup_length is 0, the function immediately returns 1.0, indicating that the ramp-up phase is complete
         return 1.0
     else:
-        current = np.clip(current, 0.0, rampup_length)
-        phase = 1.0 - current / rampup_length
-        return float(np.exp(-5.0 * phase * phase))
+        current = np.clip(current, 0.0, rampup_length) # it clips the current value (i.e., epoch) to ensure it is within the range [0, rampup_length]
+        phase = 1.0 - current / rampup_length  # It then calculates the phase as 1.0 - current / rampup_length, which represents the remaining portion of the ramp-up period
+        return float(np.exp(-5.0 * phase * phase)) # it returns the exponential of -5.0 * phase * phase, which produces a value between 0 and 1 that increases smoothly as current progresses from 0 to rampup_length.
 
 
 def linear_rampup(current, rampup_length):

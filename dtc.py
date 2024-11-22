@@ -554,7 +554,7 @@ def PI_CL_softBCE_train(model, train_loader, eva_loader, args):
     for epoch in range(args.epochs):
         loss_record = AverageMeter()
         model.train()
-        w = args.rampup_coefficient * ramps.sigmoid_rampup(epoch, args.rampup_length) 
+        w = args.rampup_coefficient * ramps.sigmoid_rampup(epoch, args.rampup_length)  # co_eff = 10, length = 5
         for batch_idx, ((x, x_bar), label, idx) in enumerate(tqdm(train_loader)):
             x, x_bar = x.to(device), x_bar.to(device)
             extracted_feat, final_feat = model(x) # model.forward() returns two values: Extracted Features(extracted_feat), Final Features(final_feat)
@@ -598,8 +598,8 @@ def PI_CL_softBCE_train(model, train_loader, eva_loader, args):
             bce_loss = criterion_bce(prob_pair, prob_bar_pair, pairwise_pseudo_label)
 
 
-            loss = sharp_loss + w * consistency_loss + w*contrastive_loss +  w*bce_loss # calculate the total loss
-            # loss = sharp_loss + w * consistency_loss  + bce_loss # calculate the total loss
+            # loss = sharp_loss + w * consistency_loss + w*contrastive_loss +  w*bce_loss # calculate the total loss
+            loss = sharp_loss + w * consistency_loss  + bce_loss # calculate the total loss
             loss_record.update(loss.item(), x.size(0))
             optimizer.zero_grad()
             loss.backward()
