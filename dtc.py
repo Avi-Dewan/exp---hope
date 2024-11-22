@@ -542,7 +542,7 @@ def PI_CL_softBCE_train(model, train_loader, eva_loader, args):
 
     simCLR_loss = SimCLR_Loss(batch_size = 128, temperature = 0.5).to(device)
     projector = ProjectionHead(512 * BasicBlock.expansion, 2048, 128).to(device)
-    criterion_bce = softBCE_F()
+    criterion_bce = softBCE_N()
 
     optimizer = SGD(list(model.parameters()) + list(projector.parameters()), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     w = 0
