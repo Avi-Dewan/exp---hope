@@ -98,7 +98,7 @@ class softBCE_F(nn.Module):
 
 class softBCE_N(nn.Module):
     def __init__(self):
-        super(myBCE, self).__init__()
+        super(softBCE_N, self).__init__()
         self.bce_with_logits = nn.BCEWithLogitsLoss(reduction='mean')  # Use BCEWithLogitsLoss
 
     def forward(self, logits1, logits2, simi):
