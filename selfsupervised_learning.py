@@ -232,7 +232,7 @@ def main():
     mainscheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 500, eta_min=0.05, last_epoch=-1, verbose = True)
 
     #LOSS FUNCTION
-    criterion = SimCLR_Loss(batch_size = 128, temperature = 0.5)
+    criterion = SimCLR_Loss(batch_size = args.batch_size, temperature = 0.5)
 
     start_epoch = 0
     if args.load_path:
