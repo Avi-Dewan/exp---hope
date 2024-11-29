@@ -95,31 +95,62 @@ def load_model(model, optimizer, scheduler, path, device):
     return model, optimizer, scheduler, start_epoch
 
 
-def plot_features(model, test_loader, save_path, epoch, device,  args):
+# def plot_features(model, test_loader, save_path, epoch, device,  args):
+#     model.eval()
+    
+#     targets=np.array([])
+#     outputs = np.zeros((len(test_loader.dataset), 
+#                       512 * BasicBlock.expansion)) 
+    
+#     for batch_idx, (x, label, idx) in enumerate(tqdm(test_loader)):
+#         x, label = x.to(device), label.to(device)
+#         _, output = model(x)
+       
+#         outputs[idx, :] = output.cpu().detach().numpy()
+#         targets=np.append(targets, label.cpu().numpy())
+
+   
+    
+#     # print('plotting t-SNE ...') 
+#     # tsne plot
+#      # Create t-SNE visualization
+#     X_embedded = TSNE(n_components=2).fit_transform(outputs)  # Use meaningful features for t-SNE
+
+#     plt.figure(figsize=(8, 6))
+#     plt.scatter(X_embedded[:, 0], X_embedded[:, 1], c=targets, cmap='viridis')
+#     plt.title("t-SNE Visualization of unlabeled Features on " + args.dataset_name + " unlabelled set - epoch" + str(epoch))
+#     plt.savefig(save_path+ '/' + args.dataset_name + '_epoch'+ str(epoch) + '.png')
+
+
+def plot_features(model, test_loader, save_path, epoch, device, args):
     model.eval()
     
-    targets=np.array([])
-    outputs = np.zeros((len(test_loader.dataset), 
-                      512 * BasicBlock.expansion)) 
+    targets = np.array([])
+    outputs = np.zeros((len(test_loader.dataset), 512 * BasicBlock.expansion)) 
     
     for batch_idx, (x, label, idx) in enumerate(tqdm(test_loader)):
         x, label = x.to(device), label.to(device)
         _, output = model(x)
        
         outputs[idx, :] = output.cpu().detach().numpy()
-        targets=np.append(targets, label.cpu().numpy())
+        targets = np.append(targets, label.cpu().numpy())
 
-   
+    print("Unique labels:", np.unique(targets))
+
+    # Normalize targets for categorical mapping
+    targets_normalized = (targets - targets.min()).astype(int)  # Map to range 0-19
+
+    # Create t-SNE visualization
+    X_embedded = TSNE(n_components=2).fit_transform(outputs)
+
     
-    # print('plotting t-SNE ...') 
-    # tsne plot
-     # Create t-SNE visualization
-    X_embedded = TSNE(n_components=2).fit_transform(outputs)  # Use meaningful features for t-SNE
-
     plt.figure(figsize=(8, 6))
-    plt.scatter(X_embedded[:, 0], X_embedded[:, 1], c=targets, cmap='viridis')
-    plt.title("t-SNE Visualization of unlabeled Features on " + args.dataset_name + " unlabelled set - epoch" + str(epoch))
-    plt.savefig(save_path+ '/' + args.dataset_name + '_epoch'+ str(epoch) + '.png')
+    scatter = plt.scatter(X_embedded[:, 0], X_embedded[:, 1], c=targets, cmap='tab20')
+    plt.colorbar(scatter)  # Add color bar to verify mapping
+    plt.title(f"t-SNE Visualization of Features on {args.dataset_name} - Epoch {epoch}")
+    plt.savefig(f"{save_path}/{args.dataset_name}_epoch{epoch}.png")
+    plt.show()
+
 
 def plot_loss(tr_loss, val_loss, save_path):
     plt.figure()
@@ -237,6 +268,9 @@ def main():
     start_epoch = 0
     if args.load_path:
         model, optimizer, mainscheduler, start_epoch = load_model(model, optimizer, mainscheduler, args.load_path, device)
+
+    plot_features(model.feature_extractor, dloader_unlabeled_test, 
+                           model_dir, epoch+1, device, args)
 
     tr_loss = []
     val_loss = []
