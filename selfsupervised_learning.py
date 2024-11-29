@@ -145,7 +145,7 @@ def plot_features(model, test_loader, save_path, epoch, device, args):
 
     
     plt.figure(figsize=(8, 6))
-    scatter = plt.scatter(X_embedded[:, 0], X_embedded[:, 1], c=targets, cmap='tab20')
+    scatter = plt.scatter(X_embedded[:, 0], X_embedded[:, 1], c=targets_normalized, cmap='tab20')
     plt.colorbar(scatter)  # Add color bar to verify mapping
     plt.title(f"t-SNE Visualization of Features on {args.dataset_name} - Epoch {epoch}")
     plt.savefig(f"{save_path}/{args.dataset_name}_epoch{epoch}.png")
@@ -270,7 +270,7 @@ def main():
         model, optimizer, mainscheduler, start_epoch = load_model(model, optimizer, mainscheduler, args.load_path, device)
 
     plot_features(model.feature_extractor, dloader_unlabeled_test, 
-                           model_dir, start_epoch+1, device, args)
+                           model_dir, start_epoch, device, args)
 
     tr_loss = []
     val_loss = []
