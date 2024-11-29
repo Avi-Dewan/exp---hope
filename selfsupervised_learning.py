@@ -270,7 +270,7 @@ def main():
         model, optimizer, mainscheduler, start_epoch = load_model(model, optimizer, mainscheduler, args.load_path, device)
 
     plot_features(model.feature_extractor, dloader_unlabeled_test, 
-                           model_dir, epoch+1, device, args)
+                           model_dir, start_epoch+1, device, args)
 
     tr_loss = []
     val_loss = []
