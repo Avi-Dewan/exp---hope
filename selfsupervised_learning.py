@@ -297,7 +297,7 @@ def main():
                            model_dir, start_epoch, device, args)
     
     # Append results
-    cluser_accs.append([epoch + 1, acc, nmi, ari])
+    cluser_accs.append([start_epoch, acc, nmi, ari])
 
 
     # worst_loss = 101
