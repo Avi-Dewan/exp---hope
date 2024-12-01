@@ -299,6 +299,10 @@ def main():
     # Append results
     cluser_accs.append([start_epoch, acc, nmi, ari])
 
+    print("-------------------------------------")
+    print(f'Epoch-{start_epoch}: ACC = {acc} , NMI = {nmi}, ARI = {ari} ')
+    print("-------------------------------------")
+
 
     # worst_loss = 101
     
@@ -340,8 +344,13 @@ def main():
             
             cluser_accs.append([epoch + 1, acc, nmi, ari])
 
+            print("-------------------------------------")
+            print(f'Epoch-{epoch+1}: ACC = {acc} , NMI = {nmi}, ARI = {ari} ')
+            print("-------------------------------------")
+
             epoch_model_path = os.path.join(model_dir, f'{args.model_name}_epoch{epoch + 1}.pth')
             save_model(model, optimizer, scheduler, epoch, epoch_model_path)
+            print(f'Training Checkpoint: {epoch+1} saved')
             
         
      # Plot and save the loss curves
