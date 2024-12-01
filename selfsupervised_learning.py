@@ -145,7 +145,7 @@ def plot_features_And_calculate_metric(model, test_loader, save_path, epoch, dev
     # print("Unique labels:", np.unique(targets))
 
     pca = PCA(n_components=20) # PCA for dimensionality reduction PCA: 512 -> 20
-    pca_features = pca.fit_transform(output) # fit the PCA model and transform the features
+    pca_features = pca.fit_transform(outputs) # fit the PCA model and transform the features
     kmeans = KMeans(n_clusters=args.n_unlabeled_classes, n_init=20)  # KMeans clustering
     y_pred = kmeans.fit_predict(pca_features)
 
