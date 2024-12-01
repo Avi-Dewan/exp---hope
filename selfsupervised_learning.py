@@ -22,7 +22,13 @@ from utils.simCLR_loss import SimCLR_Loss
 from tqdm import tqdm
 import shutil, time, requests, random, copy
 from sklearn.manifold import TSNE
+from utils.util import cluster_acc
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
+from sklearn.metrics.cluster import normalized_mutual_info_score as nmi_score
+from sklearn.metrics import adjusted_rand_score as ari_score
 import matplotlib.pyplot as plt
+import csv
 
 
 
@@ -122,9 +128,10 @@ def load_model(model, optimizer, scheduler, path, device):
 #     plt.savefig(save_path+ '/' + args.dataset_name + '_epoch'+ str(epoch) + '.png')
 
 
-def plot_features(model, test_loader, save_path, epoch, device, args):
+def plot_features_And_calculate_metric(model, test_loader, save_path, epoch, device, args):
+    torch.manual_seed(1)
+    model = model.to(device)
     model.eval()
-    
     targets = np.array([])
     outputs = np.zeros((len(test_loader.dataset), 512 * BasicBlock.expansion)) 
     
@@ -135,7 +142,14 @@ def plot_features(model, test_loader, save_path, epoch, device, args):
         outputs[idx, :] = output.cpu().detach().numpy()
         targets = np.append(targets, label.cpu().numpy())
 
-    print("Unique labels:", np.unique(targets))
+    # print("Unique labels:", np.unique(targets))
+
+    pca = PCA(n_components=20) # PCA for dimensionality reduction PCA: 512 -> 20
+    pca_features = pca.fit_transform(output) # fit the PCA model and transform the features
+    kmeans = KMeans(n_clusters=args.n_unlabeled_classes, n_init=20)  # KMeans clustering
+    y_pred = kmeans.fit_predict(pca_features)
+
+    acc, nmi, ari = cluster_acc(targets, y_pred), nmi_score(targets, y_pred), ari_score(targets, y_pred)
 
     # Normalize targets for categorical mapping
     targets_normalized = (targets - targets.min()).astype(int)  # Map to range 0-19
@@ -149,7 +163,8 @@ def plot_features(model, test_loader, save_path, epoch, device, args):
     plt.colorbar(scatter)  # Add color bar to verify mapping
     plt.title(f"t-SNE Visualization of Features on {args.dataset_name} - Epoch {epoch}")
     plt.savefig(f"{save_path}/{args.dataset_name}_epoch{epoch}.png")
-    plt.show()
+
+    return acc, nmi, ari
 
 
 def plot_loss(tr_loss, val_loss, save_path):
@@ -234,6 +249,9 @@ def main():
             aug=None, 
             shuffle=False, 
             target_list = range(5, 10))
+        
+        args.n_unlabeled_classes = 5
+
     elif args.dataset_name == 'cifar100':
         dloader_unlabeled_test = CIFAR100Loader(
             root=args.dataset_root, 
@@ -242,6 +260,8 @@ def main():
             aug=None, 
             shuffle=False, 
             target_list = range(80, 100))
+        
+        args.n_unlabeled_classes = 20
    
     num_blocks = [2, 2, 2, 2]  # Example for ResNet-18
     model = PreModel(BasicBlock, num_blocks) # Feature Extractor -> Projection Head
@@ -269,11 +289,16 @@ def main():
     if args.load_path:
         model, optimizer, mainscheduler, start_epoch = load_model(model, optimizer, mainscheduler, args.load_path, device)
 
-    plot_features(model.feature_extractor, dloader_unlabeled_test, 
-                           model_dir, start_epoch, device, args)
-
     tr_loss = []
     val_loss = []
+    cluser_accs = []
+
+    acc, nmi, ari = plot_features_And_calculate_metric(model.feature_extractor, dloader_unlabeled_test, 
+                           model_dir, start_epoch, device, args)
+    
+    # Append results
+    cluser_accs.append([epoch + 1, acc, nmi, ari])
+
 
     # worst_loss = 101
     
@@ -310,9 +335,11 @@ def main():
 
         # Plot features every 50 epochs
         if epoch > 0 and (epoch+1) % args.save_interval == 0:
-            plot_features(model.feature_extractor, dloader_unlabeled_test, 
+            acc, nmi, ari = plot_features_And_calculate_metric(model.feature_extractor, dloader_unlabeled_test, 
                            model_dir, epoch+1, device, args)
-        
+            
+            cluser_accs.append([epoch + 1, acc, nmi, ari])
+
             epoch_model_path = os.path.join(model_dir, f'{args.model_name}_epoch{epoch + 1}.pth')
             save_model(model, optimizer, scheduler, epoch, epoch_model_path)
             
@@ -320,8 +347,19 @@ def main():
      # Plot and save the loss curves
     plot_loss(tr_loss, val_loss, model_dir)
 
+    csv_file = os.path.join(model_dir, "metrics.csv")
+
+    with open(csv_file, mode="w", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(["Epoch", "ACC", "NMI", "ARI"])  # Column headers
+        writer.writerows(cluser_accs)  # Write all rows
+
+    print(f"Metrics saved to {csv_file}")
+
     torch.save(model.feature_extractor.state_dict(), args.model_dir)
     print(f"Model feature extractor saved to {args.model_dir}")
+
+
 
 if __name__ == '__main__':
     main()
