@@ -711,7 +711,9 @@ def Integrated_loss_train(model, train_loader, eva_loader, args):
 
             
             # Regularization term (L2 penalty for alpha and beta)
-            regularization_loss = args.regularization_coeff * (alpha.pow(2) + beta.pow(2))
+            # regularization_loss = args.regularization_coeff * (alpha.pow(2) + beta.pow(2))
+            regularization_loss = 0
+
 
 
             # loss = sharp_loss + w * consistency_loss + w*contrastive_loss +  w*bce_loss # calculate the total loss
