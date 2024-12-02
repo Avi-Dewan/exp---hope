@@ -867,7 +867,6 @@ if __name__ == "__main__":
 
     parser.add_argument('--rampup_length', default=5, type=int)
     parser.add_argument('--rampup_coefficient', type=float, default=10.0)
-    parser.add_argument('--rampup_coefficient', type=float, default=10.0)
     parser.add_argument('--regularization_coeff', type=float, default=.01)
 
     parser.add_argument('--batch_size', default=128, type=int)
