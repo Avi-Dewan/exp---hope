@@ -758,7 +758,138 @@ def Integrated_loss_train(model, train_loader, eva_loader, args):
     plt.legend()
     plt.savefig(args.model_folder+'/accuracies.png')   
 
+def Integrated_loss_normalized_train(model, train_loader, eva_loader, args):
+    '''
+    Sharpening the probability distribution and enforcing consistency with different augmentations
+    '''
 
+    simCLR_loss = SimCLR_Loss(batch_size = 128, temperature = 0.5).to(device)
+    projector = ProjectionHead(512 * BasicBlock.expansion, 2048, 128).to(device)
+    criterion_bce = softBCE_N()
+
+    # Loss weights as learnable parameters
+    alpha = nn.Parameter(torch.tensor(1.0, requires_grad=True))
+    beta = nn.Parameter(torch.tensor(1.0, requires_grad=True))
+
+    optimizer = SGD(
+        list(model.parameters())  + 
+        list(projector.parameters()) , 
+        lr=args.lr, 
+        momentum=args.momentum, 
+        weight_decay=args.weight_decay
+    )
+
+    w = 0
+    # Lists to store metrics for each epoch
+    accuracies = []
+    nmi_scores = []
+    ari_scores = []
+
+    for epoch in range(args.epochs):
+        loss_record = AverageMeter()
+        model.train()
+        w = args.rampup_coefficient * ramps.sigmoid_rampup(epoch, args.rampup_length)  # co_eff = 10, length = 5
+        for batch_idx, ((x, x_bar), label, idx) in enumerate(tqdm(train_loader)):
+            x, x_bar = x.to(device), x_bar.to(device)
+            extracted_feat, final_feat = model(x) # model.forward() returns two values: Extracted Features(extracted_feat), Final Features(final_feat)
+            extracted_feat_bar, final_feat_bar = model(x_bar)  # get the feature of the augmented image
+            prob = feat2prob(final_feat, model.center) # get the probability distribution by calculating distance from the center
+            prob_bar = feat2prob(final_feat_bar, model.center) #  get the probability distribution of the augmented image
+           
+            sharp_loss = F.kl_div(prob.log(), args.p_targets[idx].float().to(device)) # calculate the KL divergence loss between the probability distribution and the target distribution
+            consistency_loss = F.mse_loss(prob, prob_bar)  # calculate the mean squared error loss between the probability distribution and the probability distribution of the augmented image
+
+            base_loss = sharp_loss + w*consistency_loss
+
+            # simCLR loss
+            z_i, z_j = projector(extracted_feat), projector(extracted_feat_bar) 
+            contrastive_loss = simCLR_loss(z_i, z_j)
+
+
+            #BCE
+            rank_feat = extracted_feat.detach()
+            rank_idx = torch.argsort(rank_feat, dim=1, descending=True) # [68, 512] --> index of features. sorted by value
+            rank_idx1, rank_idx2= PairEnum(rank_idx) # [68*68, 512], [68*68, 512]
+            rank_idx1, rank_idx2=rank_idx1[:, :args.topk], rank_idx2[:, :args.topk] # [68*68, 5], [68*68, 5]
+            rank_idx1, _ = torch.sort(rank_idx1, dim=1) # [68*68, 5]
+            rank_idx2, _ = torch.sort(rank_idx2, dim=1) # [68*68, 5]
+
+            # rank_diff = rank_idx1 - rank_idx2 # [68*68, 5]
+            # rank_diff = torch.sum(torch.abs(rank_diff), dim=1) # [68*68]
+            # pairwise_pseudo_label = torch.ones_like(rank_diff).float().to(device) # [68*68] of one
+            # pairwise_pseudo_label[rank_diff>0] = -1  #  [68*68] [if rank_diff is not zero it is -1 (pairwise psuedo label = 0), else it remains 1 ( pairwise psuedo label = 1 ) ]
+            
+            # Expand rank_idx1 and rank_idx2 for broadcasting
+            rank_idx1 = rank_idx1.unsqueeze(2) # Shape: [68*68, 5, 1]
+            rank_idx2 = rank_idx2.unsqueeze(1) # Shape: [68*68, 1, 5]
+            # Compare all elements and count matches
+            matches = (rank_idx1 == rank_idx2).sum(dim=2)  # Shape: [68*68, 5]
+            common_elements = matches.sum(dim=1)          # Shape: [68*68]
+            # Calculate soft pseudo-label
+            pairwise_pseudo_label = common_elements.float() / args.topk
+
+            prob_pair, _ = PairEnum(prob)
+            _, prob_bar_pair = PairEnum(prob_bar)
+
+            bce_loss = criterion_bce(prob_pair, prob_bar_pair, pairwise_pseudo_label)
+
+            
+            # Regularization term (L2 penalty for alpha and beta)
+            # regularization_loss = args.regularization_coeff * (alpha.pow(2) + beta.pow(2))
+            regularization_loss = 0
+
+
+
+            # loss = sharp_loss + w * consistency_loss + w*contrastive_loss +  w*bce_loss # calculate the total loss
+            # loss = sharp_loss + w * consistency_loss  + bce_loss # calculate the total loss
+            print("\n---------------------")
+            print("KL loss: ", sharp_loss)
+            print("MSE loss: ", consistency_loss)
+            print("w: ", w)
+            print("Base loss: ", base_loss)
+            print("Contrastive loss: ", contrastive_loss)
+            print("BCE loss: ", bce_loss)
+            print("Total loss: ", loss)
+            print("---------------------")
+
+            loss = (
+                base_loss + 
+                alpha*contrastive_loss + 
+                beta*bce_loss + 
+                regularization_loss
+            )
+
+            loss_record.update(loss.item(), x.size(0))
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        print('Train Epoch: {} Avg Loss: {:.4f}'.format(epoch, loss_record.avg))
+
+        acc, nmi, ari, probs = test(model, eva_loader, args)
+        accuracies.append(acc)
+        nmi_scores.append(nmi)
+        ari_scores.append(ari)
+
+        if epoch % args.update_interval == 0:
+            print('updating target ...')
+            args.p_targets = target_distribution(probs)  # update the target distribution
+    # Create a dictionary that includes the model's state dictionary and the center
+    model_dict = {'state_dict': model.state_dict(), 'center': model.center}
+
+    # Save the dictionary
+    torch.save(model_dict, args.model_dir)
+    print("model saved to {}.".format(args.model_dir))
+
+    plt.figure(figsize=(10, 6))
+    epochs_range = range(args.epochs)
+    plt.plot(epochs_range, accuracies, label="Accuracy")
+    plt.plot(epochs_range, nmi_scores, label="NMI")
+    plt.plot(epochs_range, ari_scores, label="ARI")
+    plt.xlabel("Epochs")
+    plt.ylabel("Metric Score")
+    plt.title("Training Metrics over Epochs")
+    plt.legend()
+    plt.savefig(args.model_folder+'/accuracies.png')   
 
 
 def test(model, test_loader, args):
@@ -949,7 +1080,8 @@ if __name__ == "__main__":
         PI_CL_softBCE_train(model, train_loader, eval_loader, args)
     elif args.DTC == 'integrate_loss':
         Integrated_loss_train(model, train_loader, eval_loader, args)
-
+    elif args.DTC == 'integrate_loss_normalized':
+        Integrated_loss_normalized_train(model, train_loader, eval_loader, args)
     # Final ACC and plot tsne and pdf
     acc, nmi, ari, _ = test(model, eval_loader, args)
     # plot_tsne(model, eval_loader, args)
