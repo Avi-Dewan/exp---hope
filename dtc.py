@@ -861,9 +861,9 @@ def Integrated_loss_normalized_train(model, train_loader, eva_loader, args):
 
             loss = (
                 sharp_loss +
-                normalized_weights[0] * consistency_loss +
-                normalized_weights[1] * contrastive_loss +
-                normalized_weights[2] * bce_loss
+                loss_weights[0] * consistency_loss +
+                loss_weights[1] * contrastive_loss +
+                loss_weights[2] * bce_loss
             )
 
 
