@@ -768,8 +768,10 @@ def Integrated_loss_normalized_train(model, train_loader, eva_loader, args):
     criterion_bce = softBCE_N()
 
     # Loss weights as learnable parameters
-    alpha = nn.Parameter(torch.tensor(1.0, requires_grad=True))
-    beta = nn.Parameter(torch.tensor(1.0, requires_grad=True))
+    # alpha = nn.Parameter(torch.tensor(1.0, requires_grad=True))
+    # beta = nn.Parameter(torch.tensor(1.0, requires_grad=True))
+    alpha = torch.tensor(1.0/100)
+    beta = torch.tensor(1.0/10)
 
     optimizer = SGD(
         list(model.parameters())  + 
@@ -836,7 +838,6 @@ def Integrated_loss_normalized_train(model, train_loader, eva_loader, args):
             
             # Regularization term (L2 penalty for alpha and beta)
             # regularization_loss = args.regularization_coeff * (alpha.pow(2) + beta.pow(2))
-            regularization_loss = 0
 
 
 
@@ -846,8 +847,7 @@ def Integrated_loss_normalized_train(model, train_loader, eva_loader, args):
             loss = (
                 base_loss + 
                 alpha*contrastive_loss + 
-                beta*bce_loss + 
-                regularization_loss
+                beta*bce_loss 
             )
 
 
@@ -860,7 +860,7 @@ def Integrated_loss_normalized_train(model, train_loader, eva_loader, args):
             print("BCE loss: ", bce_loss)
             print("Total loss: ", loss)
             print("---------------------")
-            
+
             loss_record.update(loss.item(), x.size(0))
 
 
