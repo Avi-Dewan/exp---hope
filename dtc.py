@@ -851,15 +851,15 @@ def Integrated_loss_normalized_train(model, train_loader, eva_loader, args):
             )
 
 
-            print("\n---------------------")
-            print("KL loss: ", sharp_loss)
-            print("MSE loss: ", consistency_loss)
-            print("w: ", w)
-            print("Base loss: ", base_loss)
-            print("Contrastive loss: ", contrastive_loss)
-            print("BCE loss: ", bce_loss)
-            print("Total loss: ", loss)
-            print("---------------------")
+            # print("\n---------------------")
+            # print("KL loss: ", sharp_loss)
+            # print("MSE loss: ", consistency_loss)
+            # print("w: ", w)
+            # print("Base loss: ", base_loss)
+            # print("Contrastive loss: ", contrastive_loss)
+            # print("BCE loss: ", bce_loss)
+            # print("Total loss: ", loss)
+            # print("---------------------")
 
             loss_record.update(loss.item(), x.size(0))
 
