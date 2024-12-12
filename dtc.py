@@ -765,17 +765,22 @@ def Integrated_loss_normalized_train(model, train_loader, eva_loader, args):
 
     simCLR_loss = SimCLR_Loss(batch_size = 128, temperature = 0.5).to(device)
     projector = ProjectionHead(512 * BasicBlock.expansion, 2048, 128).to(device)
+
+    loss_weights = nn.Parameter(torch.ones(4, requires_grad=True, device=device))
+
+
     criterion_bce = softBCE_N()
 
     # Loss weights as learnable parameters
     # alpha = nn.Parameter(torch.tensor(1.0, requires_grad=True))
     # beta = nn.Parameter(torch.tensor(1.0, requires_grad=True))
-    alpha = torch.tensor(1.0/100)
-    beta = torch.tensor(1.0/10)
+    # alpha = torch.tensor(1.0/100)
+    # beta = torch.tensor(1.0/10)
 
     optimizer = SGD(
         list(model.parameters())  + 
-        list(projector.parameters()) , 
+        list(projector.parameters()) +
+        [loss_weights], 
         lr=args.lr, 
         momentum=args.momentum, 
         weight_decay=args.weight_decay
@@ -844,10 +849,21 @@ def Integrated_loss_normalized_train(model, train_loader, eva_loader, args):
             # loss = sharp_loss + w * consistency_loss + w*contrastive_loss +  w*bce_loss # calculate the total loss
             # loss = sharp_loss + w * consistency_loss  + bce_loss # calculate the total loss
 
-            loss = (
-                base_loss + 
-                alpha*contrastive_loss + 
-                beta*bce_loss 
+            # loss = (
+            #     base_loss + 
+            #     alpha*contrastive_loss + 
+            #     beta*bce_loss 
+            # )
+
+             # Normalize weights using softmax
+            normalized_weights = torch.softmax(loss_weights, dim=0)
+
+
+            loss = loss = (
+                normalized_weights[0] * sharp_loss +
+                normalized_weights[1] * consistency_loss +
+                normalized_weights[2] * contrastive_loss +
+                normalized_weights[3] * bce_loss
             )
 
 
