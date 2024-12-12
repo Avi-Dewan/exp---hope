@@ -856,10 +856,10 @@ def Integrated_loss_normalized_train(model, train_loader, eva_loader, args):
             # )
 
              # Normalize weights using softmax
-            normalized_weights = torch.softmax(loss_weights, dim=0)
+            # normalized_weights = torch.softmax(loss_weights, dim=0)
 
 
-            loss = loss = (
+            loss = (
                 sharp_loss +
                 normalized_weights[0] * consistency_loss +
                 normalized_weights[1] * contrastive_loss +
