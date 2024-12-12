@@ -842,6 +842,15 @@ def Integrated_loss_normalized_train(model, train_loader, eva_loader, args):
 
             # loss = sharp_loss + w * consistency_loss + w*contrastive_loss +  w*bce_loss # calculate the total loss
             # loss = sharp_loss + w * consistency_loss  + bce_loss # calculate the total loss
+
+            loss = (
+                base_loss + 
+                alpha*contrastive_loss + 
+                beta*bce_loss + 
+                regularization_loss
+            )
+
+
             print("\n---------------------")
             print("KL loss: ", sharp_loss)
             print("MSE loss: ", consistency_loss)
@@ -851,15 +860,10 @@ def Integrated_loss_normalized_train(model, train_loader, eva_loader, args):
             print("BCE loss: ", bce_loss)
             print("Total loss: ", loss)
             print("---------------------")
-
-            loss = (
-                base_loss + 
-                alpha*contrastive_loss + 
-                beta*bce_loss + 
-                regularization_loss
-            )
-
+            
             loss_record.update(loss.item(), x.size(0))
+
+
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
