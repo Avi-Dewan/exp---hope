@@ -546,6 +546,7 @@ def PI_CL_softBCE_train(model, train_loader, eva_loader, args):
 
     optimizer = SGD(list(model.parameters()) + list(projector.parameters()), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     w = 0
+    w_softBCE = 0
     # Lists to store metrics for each epoch
     accuracies = []
     nmi_scores = []
@@ -555,6 +556,7 @@ def PI_CL_softBCE_train(model, train_loader, eva_loader, args):
         loss_record = AverageMeter()
         model.train()
         w = args.rampup_coefficient * ramps.sigmoid_rampup(epoch, args.rampup_length)  # co_eff = 10, length = 5
+        w_softBCE = args.rampup_coefficient_softBCE * ramps.sigmoid_rampup(epoch, args.rampup_length_softBCE)  # co_eff = 20, length = 10
         for batch_idx, ((x, x_bar), label, idx) in enumerate(tqdm(train_loader)):
             x, x_bar = x.to(device), x_bar.to(device)
             extracted_feat, final_feat = model(x) # model.forward() returns two values: Extracted Features(extracted_feat), Final Features(final_feat)
@@ -598,7 +600,7 @@ def PI_CL_softBCE_train(model, train_loader, eva_loader, args):
             bce_loss = criterion_bce(prob_pair, prob_bar_pair, pairwise_pseudo_label)
 
 
-            loss = sharp_loss + w * consistency_loss + contrastive_loss +  w*bce_loss # calculate the total loss
+            loss = sharp_loss + w * consistency_loss + w*contrastive_loss +  w_softBCE*bce_loss # calculate the total loss
             # loss = sharp_loss + w * consistency_loss  + bce_loss # calculate the total loss
             loss_record.update(loss.item(), x.size(0))
             optimizer.zero_grad()
@@ -1020,6 +1022,9 @@ if __name__ == "__main__":
     parser.add_argument('--rampup_length', default=5, type=int)
     parser.add_argument('--rampup_coefficient', type=float, default=10.0)
     parser.add_argument('--regularization_coeff', type=float, default=.01)
+
+    parser.add_argument('--rampup_length_softBCE', default=10, type=int)
+    parser.add_argument('--rampup_coefficient_softBCE', type=float, default=20.0)
 
     parser.add_argument('--batch_size', default=128, type=int)
     parser.add_argument('--update_interval', default=5, type=int)
