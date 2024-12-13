@@ -598,7 +598,7 @@ def PI_CL_softBCE_train(model, train_loader, eva_loader, args):
             bce_loss = criterion_bce(prob_pair, prob_bar_pair, pairwise_pseudo_label)
 
 
-            loss = sharp_loss + w * consistency_loss + w*contrastive_loss +  w*bce_loss # calculate the total loss
+            loss = sharp_loss + w * consistency_loss + contrastive_loss +  w*bce_loss # calculate the total loss
             # loss = sharp_loss + w * consistency_loss  + bce_loss # calculate the total loss
             loss_record.update(loss.item(), x.size(0))
             optimizer.zero_grad()
