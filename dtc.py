@@ -638,18 +638,17 @@ def Integrated_loss_train(model, train_loader, eva_loader, args):
     Sharpening the probability distribution and enforcing consistency with different augmentations
     '''
 
-    simCLR_loss = SimCLR_Loss(batch_size = 128, temperature = 0.5).to(device)
+    simCLR_loss = SimCLR_Loss(batch_size = args.batch_size, temperature = 0.5).to(device)
     projector = ProjectionHead(512 * BasicBlock.expansion, 2048, 128).to(device)
     criterion_bce = softBCE_N()
 
     # Loss weights as learnable parameters
-    alpha = nn.Parameter(torch.tensor(1.0, requires_grad=True))
-    beta = nn.Parameter(torch.tensor(1.0, requires_grad=True))
+    alpha = torch.tensor(1.0)
+    beta = torch.tensor(20.0)
 
     optimizer = SGD(
         list(model.parameters())  + 
-        list(projector.parameters()) + 
-        [alpha, beta] , 
+        list(projector.parameters()), 
         lr=args.lr, 
         momentum=args.momentum, 
         weight_decay=args.weight_decay
@@ -1074,7 +1073,7 @@ if __name__ == "__main__":
     print(model)
     print('---------------------------------')
     for name, param in model.named_parameters(): 
-        if 'linear' not in name and 'layer4' not in name and 'layer3' not in name and 'layer2' not in name:
+        if 'linear' not in name and 'layer4' not in name:
             param.requires_grad = False
 
     warmup_train(model, train_loader, eval_loader, args)
