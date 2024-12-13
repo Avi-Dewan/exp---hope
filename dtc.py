@@ -763,7 +763,7 @@ def Integrated_loss_normalized_train(model, train_loader, eva_loader, args):
     Sharpening the probability distribution and enforcing consistency with different augmentations
     '''
 
-    simCLR_loss = SimCLR_Loss(batch_size = 128, temperature = 0.5).to(device)
+    simCLR_loss = SimCLR_Loss(batch_size = args.batch_size, temperature = 0.5).to(device)
     projector = ProjectionHead(512 * BasicBlock.expansion, 2048, 128).to(device)
 
     loss_weights = nn.Parameter(torch.ones(3, requires_grad=True, device=device))
