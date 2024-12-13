@@ -720,7 +720,7 @@ def Integrated_loss_train(model, train_loader, eva_loader, args):
 
             loss = (
                 base_loss + 
-                w*contrastive_loss + 
+                alpha*contrastive_loss + 
                 beta*bce_loss + 
                 regularization_loss
             )
