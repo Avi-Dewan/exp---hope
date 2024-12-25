@@ -715,7 +715,7 @@ def test_multi_head(model, test_loader, args):
         main_prob = feat2prob(final_feat, model.center)  # Shape: [batch_size, n_unlabeled_classes]
         
         # Initialize probability storage for multi-head outputs
-        head_probs = torch.zeros(len(args.num_heads), x.size(0), args.n_unlabeled_classes).to(device)
+        head_probs = torch.zeros(args.num_heads, x.size(0), args.n_unlabeled_classes).to(device)
 
         head_probs[0] = main_prob
 
