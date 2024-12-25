@@ -709,7 +709,7 @@ def test_multi_head(model, test_loader, args):
 
     for batch_idx, (x, label, idx) in enumerate(tqdm(test_loader)):
         x, label = x.to(device), label.to(device)
-        _, final_feat = model(x)  # Extract final features from model
+        extracted_feat, final_feat = model(x)  # Extract final features from model
         
         # Calculate probability from final_feat directly
         main_prob = feat2prob(final_feat, model.center)  # Shape: [batch_size, n_unlabeled_classes]
@@ -721,7 +721,7 @@ def test_multi_head(model, test_loader, args):
 
         # Pass through each head and compute probabilities
         for i, head in enumerate(args.heads):
-            prob = feat2prob(head(final_feat), model.center)  # Pass through head and compute probability
+            prob = feat2prob(head(extracted_feat), model.center)  # Pass through head and compute probability
             head_probs[i+1] = prob
 
         # Average the outputs of all heads and final_feat
