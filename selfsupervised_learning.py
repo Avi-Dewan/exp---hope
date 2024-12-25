@@ -259,9 +259,9 @@ def main():
             split='test', 
             aug=None, 
             shuffle=False, 
-            target_list = range(80, 100))
+            target_list = range(25, 50))
         
-        args.n_unlabeled_classes = 20
+        args.n_unlabeled_classes = 25
    
     num_blocks = [2, 2, 2, 2]  # Example for ResNet-18
     model = PreModel(BasicBlock, num_blocks) # Feature Extractor -> Projection Head

@@ -90,9 +90,13 @@ class SimCLRDataset(data.Dataset):
 
             self.transform = ContrastiveTransformations(self.transform, n_views=2)
 
-            self.data = datasets.__dict__[self.dataset_name.upper()](
+            full_dataset = datasets.__dict__[self.dataset_name.upper()](
                 root = dataset_root, train=self.split=='train',
                 download=True, transform=self.transform)
+            
+            indices = [i for i, (img, label) in enumerate(full_dataset) if label < 50]
+            
+            self.data = torch.utils.data.Subset(full_dataset, indices)
 
             
         # elif self.dataset_name=='svhn':
