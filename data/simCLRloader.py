@@ -70,7 +70,7 @@ class SimCLRDataset(data.Dataset):
             self.std_pix = [x/255.0 for x in [68.2, 65.4, 70.4]]
             
             if split != 'test':
-                self.transform = transforms.Compose([
+                self.transform = transforms.Compose([ 
                     transforms.RandomHorizontalFlip(0.5),
                     transforms.RandomResizedCrop(32, scale=(0.8, 1.0)),
                     transforms.RandomApply([
@@ -114,7 +114,7 @@ class SimCLRDataset(data.Dataset):
             raise ValueError('Not recognized dataset {0}'.format(dataset_name))
 
     def __getitem__(self, index):
-        imgs, label = self.data[index] # n vies of images and label
+        imgs, label = self.data[index] # n views of images and label
         return imgs, int(label)
 
     def __len__(self):

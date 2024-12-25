@@ -691,10 +691,6 @@ def Integrated_loss_train(model, train_loader, eva_loader, args):
             rank_idx1, _ = torch.sort(rank_idx1, dim=1) # [68*68, 5]
             rank_idx2, _ = torch.sort(rank_idx2, dim=1) # [68*68, 5]
 
-            # rank_diff = rank_idx1 - rank_idx2 # [68*68, 5]
-            # rank_diff = torch.sum(torch.abs(rank_diff), dim=1) # [68*68]
-            # pairwise_pseudo_label = torch.ones_like(rank_diff).float().to(device) # [68*68] of one
-            # pairwise_pseudo_label[rank_diff>0] = -1  #  [68*68] [if rank_diff is not zero it is -1 (pairwise psuedo label = 0), else it remains 1 ( pairwise psuedo label = 1 ) ]
             
             # Expand rank_idx1 and rank_idx2 for broadcasting
             rank_idx1 = rank_idx1.unsqueeze(2) # Shape: [68*68, 5, 1]
@@ -715,10 +711,6 @@ def Integrated_loss_train(model, train_loader, eva_loader, args):
             # regularization_loss = args.regularization_coeff * (alpha.pow(2) + beta.pow(2))
             regularization_loss = 0
 
-
-
-            # loss = sharp_loss + w * consistency_loss + w*contrastive_loss +  w*bce_loss # calculate the total loss
-            # loss = sharp_loss + w * consistency_loss  + bce_loss # calculate the total loss
 
             loss = (
                 base_loss + 
@@ -772,12 +764,6 @@ def Integrated_loss_normalized_train(model, train_loader, eva_loader, args):
 
     criterion_bce = softBCE_N()
 
-    # Loss weights as learnable parameters
-    # alpha = nn.Parameter(torch.tensor(1.0, requires_grad=True))
-    # beta = nn.Parameter(torch.tensor(1.0, requires_grad=True))
-    # alpha = torch.tensor(1.0/100)
-    # beta = torch.tensor(1.0/10)
-
     optimizer = SGD(
         list(model.parameters())  + 
         list(projector.parameters()) +
@@ -822,11 +808,6 @@ def Integrated_loss_normalized_train(model, train_loader, eva_loader, args):
             rank_idx1, _ = torch.sort(rank_idx1, dim=1) # [68*68, 5]
             rank_idx2, _ = torch.sort(rank_idx2, dim=1) # [68*68, 5]
 
-            # rank_diff = rank_idx1 - rank_idx2 # [68*68, 5]
-            # rank_diff = torch.sum(torch.abs(rank_diff), dim=1) # [68*68]
-            # pairwise_pseudo_label = torch.ones_like(rank_diff).float().to(device) # [68*68] of one
-            # pairwise_pseudo_label[rank_diff>0] = -1  #  [68*68] [if rank_diff is not zero it is -1 (pairwise psuedo label = 0), else it remains 1 ( pairwise psuedo label = 1 ) ]
-            
             # Expand rank_idx1 and rank_idx2 for broadcasting
             rank_idx1 = rank_idx1.unsqueeze(2) # Shape: [68*68, 5, 1]
             rank_idx2 = rank_idx2.unsqueeze(1) # Shape: [68*68, 1, 5]
@@ -841,24 +822,6 @@ def Integrated_loss_normalized_train(model, train_loader, eva_loader, args):
 
             bce_loss = criterion_bce(prob_pair, prob_bar_pair, pairwise_pseudo_label)
 
-            
-            # Regularization term (L2 penalty for alpha and beta)
-            # regularization_loss = args.regularization_coeff * (alpha.pow(2) + beta.pow(2))
-
-
-
-            # loss = sharp_loss + w * consistency_loss + w*contrastive_loss +  w*bce_loss # calculate the total loss
-            # loss = sharp_loss + w * consistency_loss  + bce_loss # calculate the total loss
-
-            # loss = (
-            #     base_loss + 
-            #     alpha*contrastive_loss + 
-            #     beta*bce_loss 
-            # )
-
-             # Normalize weights using softmax
-            # normalized_weights = torch.softmax(loss_weights, dim=0)
-
 
             loss = (
                 sharp_loss +
@@ -866,17 +829,6 @@ def Integrated_loss_normalized_train(model, train_loader, eva_loader, args):
                 loss_weights[1] * contrastive_loss +
                 loss_weights[2] * bce_loss
             )
-
-
-            # print("\n---------------------")
-            # print("KL loss: ", sharp_loss)
-            # print("MSE loss: ", consistency_loss)
-            # print("w: ", w)
-            # print("Base loss: ", base_loss)
-            # print("Contrastive loss: ", contrastive_loss)
-            # print("BCE loss: ", bce_loss)
-            # print("Total loss: ", loss)
-            # print("---------------------")
 
             loss_record.update(loss.item(), x.size(0))
 
@@ -911,6 +863,7 @@ def Integrated_loss_normalized_train(model, train_loader, eva_loader, args):
     plt.title("Training Metrics over Epochs")
     plt.legend()
     plt.savefig(args.model_folder+'/accuracies.png')   
+
 
 
 def test(model, test_loader, args):
