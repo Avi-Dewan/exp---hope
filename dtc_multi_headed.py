@@ -643,16 +643,9 @@ if __name__ == "__main__":
         PI_TE_train(model, train_loader, eval_loader, args)
     elif args.DTC == 'PI_CL':
         PI_CL_train(model, train_loader, eval_loader, args)
-    elif args.DTC == 'PI_CL_BCE':
-        PI_CL_BCE_train(model, train_loader, eval_loader, args)
-    elif args.DTC == 'PI_CL_myBCE':
-        PI_CL_myBCE_train(model, train_loader, eval_loader, args)
     elif args.DTC == 'PI_CL_softBCE':
         PI_CL_softBCE_train(model, train_loader, eval_loader, args)
-    elif args.DTC == 'integrate_loss':
-        Integrated_loss_train(model, train_loader, eval_loader, args)
-    elif args.DTC == 'integrate_loss_normalized':
-        Integrated_loss_normalized_train(model, train_loader, eval_loader, args)
+        
     # Final ACC and plot tsne and pdf
     acc, nmi, ari, _ = test(model, eval_loader, args)
     # plot_tsne(model, eval_loader, args)
