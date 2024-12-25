@@ -715,7 +715,7 @@ def test_multi_head(model, test_loader, args):
         main_prob = feat2prob(final_feat, model.center)  # Shape: [batch_size, n_unlabeled_classes]
         
         # Initialize probability storage for multi-head outputs
-        head_probs = torch.zeros(len(args.heads), x.size(0), args.n_unlabeled_classes).to(device)
+        head_probs = torch.zeros(len(args.num_heads), x.size(0), args.n_unlabeled_classes).to(device)
 
         head_probs[0] = main_prob
 
@@ -725,7 +725,7 @@ def test_multi_head(model, test_loader, args):
             head_probs[i+1] = prob
 
         # Average the outputs of all heads and final_feat
-        avg_prob = + torch.mean(head_probs, dim=0)
+        avg_prob = torch.mean(head_probs, dim=0)
 
         # Get predictions from the averaged probability
         _, pred = avg_prob.max(1)
