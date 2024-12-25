@@ -375,6 +375,8 @@ def PI_CL_softBCE_train(model, train_loader, eva_loader, args):
     nmi_scores = []
     ari_scores = []
 
+    # args.num_heads --> the thing is we have a pretrained model.. which gives us extracted_feat( 512), final_feat ( 20 )... final_feat is a linear layer of nn.Linear(512, 20)... So, I mainly want to implement nn.Linear(512, 20) till args.nums_head - 1 .. So I want this multi head manually decalre here and used in training 
+
     for epoch in range(args.epochs):
         loss_record = AverageMeter()
         model.train()
@@ -458,6 +460,224 @@ def PI_CL_softBCE_train(model, train_loader, eva_loader, args):
     plt.savefig(args.model_folder+'/accuracies.png')   
 
 
+def multi_head_avg_train(model, train_loader, eva_loader, args):
+    simCLR_loss = SimCLR_Loss(batch_size=args.batch_size, temperature=0.5).to(device)
+    projector = ProjectionHead(512 * BasicBlock.expansion, 2048, 128).to(device)
+    criterion_bce = softBCE_N()
+
+    optimizer = SGD(list(model.parameters()) + list(projector.parameters()), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    
+    args.heads = nn.ModuleList([nn.Linear(512, 20).to(device) for _ in range(args.num_heads-1)])  # Multi-head setup
+
+    accuracies, nmi_scores, ari_scores = [], [], []
+
+    for epoch in range(args.epochs):
+        loss_record = AverageMeter()
+        model.train()
+        w = args.rampup_coefficient * ramps.sigmoid_rampup(epoch, args.rampup_length)
+
+        for batch_idx, ((x, x_bar), label, idx) in enumerate(tqdm(train_loader)):
+            x, x_bar = x.to(device), x_bar.to(device)
+            extracted_feat, final_feat = model(x)  
+            extracted_feat_bar, final_feat_bar = model(x_bar)
+
+            prob = feat2prob(final_feat, model.center) # get the probability distribution by calculating distance from the center
+            prob_bar = feat2prob(final_feat_bar, model.center) #  get the probability distribution of the augmented image
+
+            # Multi-head: Aggregate probabilities from all heads
+            probs = []
+            probs_bar = []
+
+            probs.append(prob)
+            probs_bar.append(prob_bar)
+
+            for head in args.heads:
+                prob = feat2prob(head(extracted_feat), model.center)
+                prob_bar = feat2prob(head(extracted_feat_bar), model.center)
+                probs.append(prob)
+                probs_bar.append(prob_bar)
+
+            # Average probabilities across heads
+            prob = torch.mean(torch.stack(probs), dim=0)
+            prob_bar = torch.mean(torch.stack(probs_bar), dim=0)
+
+            sharp_loss = F.kl_div(prob.log(), args.p_targets[idx].float().to(device))
+            consistency_loss = F.mse_loss(prob, prob_bar)
+
+            # simCLR loss
+            z_i, z_j = projector(extracted_feat), projector(extracted_feat_bar) 
+            contrastive_loss = simCLR_loss(z_i, z_j)
+
+
+            #BCE
+            rank_feat = extracted_feat.detach()
+            rank_idx = torch.argsort(rank_feat, dim=1, descending=True) # [68, 512] --> index of features. sorted by value
+            rank_idx1, rank_idx2= PairEnum(rank_idx) # [68*68, 512], [68*68, 512]
+            rank_idx1, rank_idx2=rank_idx1[:, :args.topk], rank_idx2[:, :args.topk] # [68*68, 5], [68*68, 5]
+            rank_idx1, _ = torch.sort(rank_idx1, dim=1) # [68*68, 5]
+            rank_idx2, _ = torch.sort(rank_idx2, dim=1) # [68*68, 5]
+
+            # rank_diff = rank_idx1 - rank_idx2 # [68*68, 5]
+            # rank_diff = torch.sum(torch.abs(rank_diff), dim=1) # [68*68]
+            # pairwise_pseudo_label = torch.ones_like(rank_diff).float().to(device) # [68*68] of one
+            # pairwise_pseudo_label[rank_diff>0] = -1  #  [68*68] [if rank_diff is not zero it is -1 (pairwise psuedo label = 0), else it remains 1 ( pairwise psuedo label = 1 ) ]
+            
+            # Expand rank_idx1 and rank_idx2 for broadcasting
+            rank_idx1 = rank_idx1.unsqueeze(2) # Shape: [68*68, 5, 1]
+            rank_idx2 = rank_idx2.unsqueeze(1) # Shape: [68*68, 1, 5]
+            # Compare all elements and count matches
+            matches = (rank_idx1 == rank_idx2).sum(dim=2)  # Shape: [68*68, 5]
+            common_elements = matches.sum(dim=1)          # Shape: [68*68]
+            # Calculate soft pseudo-label
+            pairwise_pseudo_label = common_elements.float() / args.topk
+
+            prob_pair, _ = PairEnum(prob)
+            _, prob_bar_pair = PairEnum(prob_bar)
+
+            bce_loss = criterion_bce(prob_pair, prob_bar_pair, pairwise_pseudo_label)
+
+
+            loss = sharp_loss + w * consistency_loss + w*contrastive_loss +  w*bce_loss # calculate the total loss
+            # loss = sharp_loss + w * consistency_loss  + bce_loss # calculate the total loss
+            loss_record.update(loss.item(), x.size(0))
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        print('Train Epoch: {} Avg Loss: {:.4f}'.format(epoch, loss_record.avg))
+
+        acc, nmi, ari, probs = test_multi_head(model, eva_loader, args)
+        accuracies.append(acc)
+        nmi_scores.append(nmi)
+        ari_scores.append(ari)
+
+        if epoch % args.update_interval == 0:
+            print('updating target ...')
+            args.p_targets = target_distribution(probs)  # update the target distribution
+    # Create a dictionary that includes the model's state dictionary and the center
+    model_dict = {'state_dict': model.state_dict(), 'center': model.center}
+
+    # Save the dictionary
+    torch.save(model_dict, args.model_dir)
+    print("model saved to {}.".format(args.model_dir))
+
+    plt.figure(figsize=(10, 6))
+    epochs_range = range(args.epochs)
+    plt.plot(epochs_range, accuracies, label="Accuracy")
+    plt.plot(epochs_range, nmi_scores, label="NMI")
+    plt.plot(epochs_range, ari_scores, label="ARI")
+    plt.xlabel("Epochs")
+    plt.ylabel("Metric Score")
+    plt.title("Training Metrics over Epochs")
+    plt.legend()
+    plt.savefig(args.model_folder+'/accuracies.png') 
+
+
+def multi_head_indv_train(model, train_loader, eva_loader, args):
+    simCLR_loss = SimCLR_Loss(batch_size=args.batch_size, temperature=0.5).to(device)
+    projector = ProjectionHead(512 * BasicBlock.expansion, 2048, 128).to(device)
+    criterion_bce = softBCE_N()
+
+    optimizer = SGD(list(model.parameters()) + list(projector.parameters()), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    
+    args.heads = nn.ModuleList([nn.Linear(512, 20).to(device) for _ in range(args.num_heads-1)])  # Multi-head setup
+
+    accuracies, nmi_scores, ari_scores = [], [], []
+
+    for epoch in range(args.epochs):
+        loss_record = AverageMeter()
+        model.train()
+        w = args.rampup_coefficient * ramps.sigmoid_rampup(epoch, args.rampup_length)
+
+        for batch_idx, ((x, x_bar), label, idx) in enumerate(tqdm(train_loader)):
+            x, x_bar = x.to(device), x_bar.to(device)
+            extracted_feat, final_feat = model(x)  
+            extracted_feat_bar, final_feat_bar = model(x_bar)
+
+            prob = feat2prob(final_feat, model.center) # get the probability distribution by calculating distance from the center
+            prob_bar = feat2prob(final_feat_bar, model.center) #  get the probability distribution of the augmented image
+
+            sharp_loss = F.kl_div(prob.log(), args.p_targets[idx].float().to(device)) # calculate the KL divergence loss between the probability distribution and the target distribution
+            consistency_loss = F.mse_loss(prob, prob_bar)  # calculate the mean squared error loss between the probability distribution and the probability distribution of the augmented image
+
+            base_loss = sharp_loss + w*consistency_loss
+
+            # Compute loss for each head independently
+            for head in args.heads:
+                prob = feat2prob(head(extracted_feat), model.center)
+                prob_bar = feat2prob(head(extracted_feat_bar), model.center)
+
+                sharp_loss = F.kl_div(prob.log(), args.p_targets[idx].float().to(device))
+                consistency_loss = F.mse_loss(prob, prob_bar)
+
+                base_loss += sharp_loss + w * consistency_loss  # Sum of all head losses
+
+
+            # simCLR loss
+            z_i, z_j = projector(extracted_feat), projector(extracted_feat_bar) 
+            contrastive_loss = simCLR_loss(z_i, z_j)
+
+
+            #BCE
+            rank_feat = extracted_feat.detach()
+            rank_idx = torch.argsort(rank_feat, dim=1, descending=True) # [68, 512] --> index of features. sorted by value
+            rank_idx1, rank_idx2= PairEnum(rank_idx) # [68*68, 512], [68*68, 512]
+            rank_idx1, rank_idx2=rank_idx1[:, :args.topk], rank_idx2[:, :args.topk] # [68*68, 5], [68*68, 5]
+            rank_idx1, _ = torch.sort(rank_idx1, dim=1) # [68*68, 5]
+            rank_idx2, _ = torch.sort(rank_idx2, dim=1) # [68*68, 5]
+
+            # rank_diff = rank_idx1 - rank_idx2 # [68*68, 5]
+            # rank_diff = torch.sum(torch.abs(rank_diff), dim=1) # [68*68]
+            # pairwise_pseudo_label = torch.ones_like(rank_diff).float().to(device) # [68*68] of one
+            # pairwise_pseudo_label[rank_diff>0] = -1  #  [68*68] [if rank_diff is not zero it is -1 (pairwise psuedo label = 0), else it remains 1 ( pairwise psuedo label = 1 ) ]
+            
+            # Expand rank_idx1 and rank_idx2 for broadcasting
+            rank_idx1 = rank_idx1.unsqueeze(2) # Shape: [68*68, 5, 1]
+            rank_idx2 = rank_idx2.unsqueeze(1) # Shape: [68*68, 1, 5]
+            # Compare all elements and count matches
+            matches = (rank_idx1 == rank_idx2).sum(dim=2)  # Shape: [68*68, 5]
+            common_elements = matches.sum(dim=1)          # Shape: [68*68]
+            # Calculate soft pseudo-label
+            pairwise_pseudo_label = common_elements.float() / args.topk
+
+            prob_pair, _ = PairEnum(prob)
+            _, prob_bar_pair = PairEnum(prob_bar)
+
+            bce_loss = criterion_bce(prob_pair, prob_bar_pair, pairwise_pseudo_label)
+
+
+            loss = base_loss + w*contrastive_loss +  w*bce_loss # calculate the total loss
+            # loss = sharp_loss + w * consistency_loss  + bce_loss # calculate the total loss
+            loss_record.update(loss.item(), x.size(0))
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        print('Train Epoch: {} Avg Loss: {:.4f}'.format(epoch, loss_record.avg))
+
+        acc, nmi, ari, probs = test_multi_head(model, eva_loader, args)
+        accuracies.append(acc)
+        nmi_scores.append(nmi)
+        ari_scores.append(ari)
+
+        if epoch % args.update_interval == 0:
+            print('updating target ...')
+            args.p_targets = target_distribution(probs)  # update the target distribution
+    # Create a dictionary that includes the model's state dictionary and the center
+    model_dict = {'state_dict': model.state_dict(), 'center': model.center}
+
+    # Save the dictionary
+    torch.save(model_dict, args.model_dir)
+    print("model saved to {}.".format(args.model_dir))
+
+    plt.figure(figsize=(10, 6))
+    epochs_range = range(args.epochs)
+    plt.plot(epochs_range, accuracies, label="Accuracy")
+    plt.plot(epochs_range, nmi_scores, label="NMI")
+    plt.plot(epochs_range, ari_scores, label="ARI")
+    plt.xlabel("Epochs")
+    plt.ylabel("Metric Score")
+    plt.title("Training Metrics over Epochs")
+    plt.legend()
+    plt.savefig(args.model_folder+'/accuracies.png') 
 
 
 def test(model, test_loader, args):
@@ -479,6 +699,47 @@ def test(model, test_loader, args):
     probs = torch.from_numpy(probs)
 
     return acc, nmi, ari, probs 
+
+
+def test_multi_head(model, test_loader, args):
+    model.eval()
+    preds = np.array([])
+    targets = np.array([])
+    probs = np.zeros((len(test_loader.dataset), args.n_unlabeled_classes))
+
+    for batch_idx, (x, label, idx) in enumerate(tqdm(test_loader)):
+        x, label = x.to(device), label.to(device)
+        _, final_feat = model(x)  # Extract final features from model
+        
+        # Calculate probability from final_feat directly
+        main_prob = feat2prob(final_feat, model.center)  # Shape: [batch_size, n_unlabeled_classes]
+        
+        # Initialize probability storage for multi-head outputs
+        head_probs = torch.zeros(len(args.heads), x.size(0), args.n_unlabeled_classes).to(device)
+
+        # Pass through each head and compute probabilities
+        for i, head in enumerate(args.heads):
+            prob = feat2prob(head(final_feat), model.center)  # Pass through head and compute probability
+            head_probs[i] = prob
+
+        # Average the outputs of all heads and final_feat
+        avg_prob = (main_prob + torch.mean(head_probs, dim=0)) / 2  # Combine main output + head avg
+
+        # Get predictions from the averaged probability
+        _, pred = avg_prob.max(1)
+        targets = np.append(targets, label.cpu().numpy())
+        preds = np.append(preds, pred.cpu().numpy())
+        
+        idx = idx.data.cpu().numpy()
+        probs[idx, :] = avg_prob.cpu().detach().numpy()  # Store averaged probs
+
+    # Evaluate clustering performance
+    acc, nmi, ari = cluster_acc(targets.astype(int), preds.astype(int)), nmi_score(targets, preds), ari_score(targets, preds)
+    print('Test acc {:.4f}, nmi {:.4f}, ari {:.4f}'.format(acc, nmi, ari))
+    
+    probs = torch.from_numpy(probs)
+    return acc, nmi, ari, probs
+
 
 
 def plot_tsne(model, test_loader, args):
@@ -645,6 +906,10 @@ if __name__ == "__main__":
         PI_CL_train(model, train_loader, eval_loader, args)
     elif args.DTC == 'PI_CL_softBCE':
         PI_CL_softBCE_train(model, train_loader, eval_loader, args)
+    elif args.DTC == 'multi_head_avg':
+        multi_head_avg_train(model, train_loader, eval_loader, args)
+    elif args.DTC == 'multi_head_indv':
+        multi_head_indv_train(model, train_loader, eval_loader, args)
         
     # Final ACC and plot tsne and pdf
     acc, nmi, ari, _ = test(model, eval_loader, args)
