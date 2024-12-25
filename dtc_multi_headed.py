@@ -834,10 +834,15 @@ if __name__ == "__main__":
     parser.add_argument('--rampup_length_softBCE', default=10, type=int)
     parser.add_argument('--rampup_coefficient_softBCE', type=float, default=20.0)
 
+
+
     parser.add_argument('--batch_size', default=128, type=int)
     parser.add_argument('--update_interval', default=5, type=int)
     parser.add_argument('--n_unlabeled_classes', default=5, type=int)
     parser.add_argument('--n_labeled_classes', default=5, type=int)
+
+
+    parser.add_argument('--num_heads', default=4, type=int)
     parser.add_argument('--topk', default=5, type=int)
     parser.add_argument('--seed', default=1, type=int)
     parser.add_argument('--save_txt', default=False, type=str2bool, help='save txt or not', metavar='BOOL')
