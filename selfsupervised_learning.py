@@ -245,7 +245,7 @@ def main():
         dloader_unlabeled_test = CIFAR10Loader(
             root=args.dataset_root, 
             batch_size=128, 
-            split='test', 
+            split='train', 
             aug=None, 
             shuffle=False, 
             target_list = range(5, 10))
@@ -256,12 +256,12 @@ def main():
         dloader_unlabeled_test = CIFAR100Loader(
             root=args.dataset_root, 
             batch_size=128, 
-            split='test', 
+            split='train', 
             aug=None, 
             shuffle=False, 
-            target_list = range(25, 50))
+            target_list = range(80, 100))
         
-        args.n_unlabeled_classes = 25
+        args.n_unlabeled_classes = 20
    
     num_blocks = [2, 2, 2, 2]  # Example for ResNet-18
     model = PreModel(BasicBlock, num_blocks) # Feature Extractor -> Projection Head
