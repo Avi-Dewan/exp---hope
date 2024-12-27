@@ -84,3 +84,59 @@ class SimCLR_Loss(nn.Module):
         loss /= N  # Normalize by the batch size
         
         return loss
+    
+
+class ClusterBasedContrastiveLoss(nn.Module):
+    def __init__(self, hard_pos_k, n_cluster, temperature=0.5):
+        super().__init__()
+        self.temperature = temperature
+        self.hard_pos_k = hard_pos_k
+        self.num_clusters = n_cluster
+        self.similarity_f = nn.CosineSimilarity(dim=2)
+
+    def forward(self, prob, prob_bar, z_i, z_j):
+        batch_size = prob.size(0)
+        z = torch.cat((z_i, z_j), dim=0)  # Combine embeddings
+        prob = torch.cat((prob, prob_bar), dim=0)  # Combine probabilities
+
+        # Step 1: Assign samples to clusters
+        cluster_assignments = prob.argmax(dim=1)  # Cluster assignment
+        clusters = {c: (cluster_assignments == c).nonzero(as_tuple=True)[0] for c in range(self.num_clusters)}
+
+        loss = 0.0
+        total_clusters = 0
+
+        # Step 2: Process each cluster
+        for cluster_id, indices in clusters.items():
+            if len(indices) < self.hard_pos_k:
+                continue  # Skip if too few samples in the cluster
+
+            # Select top-k hard positives (highest prob in the cluster)
+            cluster_prob = prob[indices]  # [cluster_size, num_clusters]
+            topk_indices = cluster_prob[:, cluster_id].topk(self.hard_pos_k).indices
+            hard_pos_indices = indices[topk_indices]
+
+            # Create positives and negatives
+            pos = z[hard_pos_indices]  # [k, embedding_dim]
+            pos_aug = z[hard_pos_indices + batch_size]  # Augmented views
+
+            # Combine anchor and positive
+            pos_pairs = torch.cat([pos, pos_aug], dim=0)  # [2k, embedding_dim]
+
+            # Negative samples come from all other clusters
+            neg_indices = torch.cat([clusters[c] for c in range(self.num_clusters) if c != cluster_id])
+            neg = z[neg_indices]  # [neg_count, embedding_dim]
+
+            # Compute similarities
+            pos_sim = self.similarity_f(pos_pairs.unsqueeze(1), pos.unsqueeze(0)) / self.temperature
+            neg_sim = self.similarity_f(pos_pairs.unsqueeze(1), neg.unsqueeze(0)) / self.temperature
+
+            # Contrastive loss for the cluster
+            pos_loss = -torch.log(torch.exp(pos_sim).sum(dim=1))
+            neg_loss = torch.log(torch.exp(neg_sim).sum(dim=1))
+            cluster_loss = pos_loss + neg_loss
+
+            loss += cluster_loss.mean()  # Average over cluster
+            total_clusters += 1
+
+        return loss / total_clusters if total_clusters > 0 else torch.tensor(0.0, device=z.device)
