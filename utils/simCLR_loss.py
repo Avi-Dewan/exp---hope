@@ -100,8 +100,8 @@ class ClusterBasedContrastiveLoss(nn.Module):
 
         # Cluster-wise top-k selection
         topk_indices = torch.topk(prob, self.hard_pos_k, dim=0).indices  # [k, num_clusters]
-        print(topk_indices.shape)
-        print(topk_indices)
+        # print(topk_indices.shape)
+        # print(topk_indices)
 
         loss = 0.0
         total_clusters = 0
