@@ -641,7 +641,7 @@ def cluster_contrastive_train(model, train_loader, eva_loader, args):
     '''
 
     simCLR_loss = SimCLR_Loss(batch_size = args.batch_size, temperature = 0.5).to(device)
-    cluster_contrastive_loss = ClusterBasedContrastiveLoss(hard_pos_k=args.hard_pos_k, n_cluster=args.n_unlabeled_class)
+    cluster_contrastive_loss = ClusterBasedContrastiveLoss(hard_pos_k=args.hard_pos_k, n_cluster=args.n_unlabeled_classes)
     projector = ProjectionHead(512 * BasicBlock.expansion, 2048, 128).to(device)
     criterion_bce = softBCE_N()
 
