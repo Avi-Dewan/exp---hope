@@ -671,7 +671,7 @@ def cluster_contrastive_train(model, train_loader, eva_loader, args):
             # simCLR loss
             z_i, z_j = projector(extracted_feat), projector(extracted_feat_bar) 
             simLoss = simCLR_loss(z_i, z_j)
-            cluster_conts_loss = cluster_contrastive_loss(prob, prob_bar, z_i, z_j)
+            cluster_conts_loss = cluster_contrastive_loss(prob, z_i, z_j)
             contrastive_loss = simLoss + cluster_conts_loss
 
             #BCE

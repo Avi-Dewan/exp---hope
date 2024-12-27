@@ -94,6 +94,57 @@ class ClusterBasedContrastiveLoss(nn.Module):
         self.num_clusters = n_cluster
         self.similarity_f = nn.CosineSimilarity(dim=2)
 
+    def forward(self, prob, z_i, z_j):
+        batch_size = prob.size(0)
+        z = torch.cat((z_i, z_j), dim=0)  # Combine features [2*batch_size, dim]
+
+        # Cluster-wise top-k selection
+        topk_indices = torch.topk(prob, self.hard_pos_k, dim=0).indices  # [k, num_clusters]
+        print(topk_indices.shape)
+        print(topk_indices)
+
+        loss = 0.0
+        total_clusters = 0
+
+        for cluster_id in range(self.num_clusters):
+            pos_indices = topk_indices[:, cluster_id]  # Top-k indices for cluster c
+            pos = z[pos_indices]  # Positives from cluster c
+            pos_aug = z[pos_indices + batch_size]  # Augmented positives
+
+            # Combine for contrastive pairs
+            pos_pairs = torch.cat([pos, pos_aug], dim=0)  # [2k, dim]
+
+
+            # Negatives from all other clusters (include both z_i and z_j)
+            neg_indices = torch.cat([
+                torch.cat([topk_indices[:, c], topk_indices[:, c] + batch_size])
+                for c in range(self.num_clusters) if c != cluster_id
+            ])
+            neg = z[neg_indices]  # [neg_count, dim]
+
+            # Compute similarities
+            pos_sim = self.similarity_f(pos_pairs.unsqueeze(1), pos.unsqueeze(0)) / self.temperature
+            neg_sim = self.similarity_f(pos_pairs.unsqueeze(1), neg.unsqueeze(0)) / self.temperature
+
+            # Contrastive loss
+            pos_loss = -torch.log(torch.exp(pos_sim).sum(dim=1))  # Positive pairs closer
+            neg_loss = torch.log(torch.exp(neg_sim).sum(dim=1))   # Negatives pushed away
+
+            cluster_loss = pos_loss + neg_loss
+            loss += cluster_loss.mean()  # Average over cluster
+            total_clusters += 1
+
+        return loss / total_clusters if total_clusters > 0 else torch.tensor(0.0, device=z.device)
+
+
+class ClusterBasedContrastiveLoss(nn.Module):
+    def __init__(self, hard_pos_k, n_cluster, temperature=0.5):
+        super().__init__()
+        self.temperature = temperature
+        self.hard_pos_k = hard_pos_k
+        self.num_clusters = n_cluster
+        self.similarity_f = nn.CosineSimilarity(dim=2)
+
     def forward(self, prob, prob_bar, z_i, z_j):
         batch_size = prob.size(0)
         z = torch.cat((z_i, z_j), dim=0)  # Combine embeddings
